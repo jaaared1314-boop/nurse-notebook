@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Charge Nurse Checklist</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="description" content="Shift checklist for charge nurses. Runs offline on your phone; nothing leaves the device.">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+
+<!-- Add to Home Screen: full-screen, no Safari chrome -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Charge">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header id="hdr"></header>
+
+<main id="app"></main>
+
+<nav class="tabbar" id="tabs"></nav>
+
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"></div></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- rendered only when printing / saving a PDF -->
+<div id="printout"></div>
+
+<script src="js/template.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
