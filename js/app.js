@@ -20,13 +20,12 @@ const I = {
   chev: '<path d="M8 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>',
   info: '<circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 10.6v6.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="7.4" r="1.15" fill="currentColor"/>',
   gear: '<path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 14.6a7.9 7.9 0 000-5.2l1.7-1.3-1.9-3.3-2 .8a7.9 7.9 0 00-4.5-2.6L12.4 1h-3.8l-.3 2a7.9 7.9 0 00-4.5 2.6l-2-.8L-.1 8.1l1.7 1.3a7.9 7.9 0 000 5.2L-.1 15.9l1.9 3.3 2-.8a7.9 7.9 0 004.5 2.6l.3 2h3.8l.3-2a7.9 7.9 0 004.5-2.6l2 .8 1.9-3.3z" fill="none" stroke="currentColor" stroke-width="1.6" transform="translate(1.5 1.2) scale(.9)"/>',
-  list: '<path d="M8 6h12M8 12h12M8 18h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>',
   clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 7.2V12l3.4 2.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
+  list: '<path d="M8 6h12M8 12h12M8 18h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>',
   print: '<path d="M7 9V3.8h10V9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><rect x="3.2" y="9" width="17.6" height="7.6" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 14h10v6.2H7z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>',
   copy: '<rect x="8.6" y="8.6" width="11.4" height="11.4" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M15.4 5.6a2.6 2.6 0 00-2.6-2.6H6.6A2.6 2.6 0 004 5.6v6.2a2.6 2.6 0 002.6 2.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>',
   trash: '<path d="M4.6 7h14.8M9.4 7V4.6h5.2V7M6.6 7l.9 12.2a1.8 1.8 0 001.8 1.6h5.4a1.8 1.8 0 001.8-1.6L17.4 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   minus: '<path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
-  flag: '<path d="M5.5 21V3.6h0c3.3 2 6.6-2 9.9 0s6.6-2 6.6-2v9.4s-3.3 2-6.6 0-6.6 2-9.9 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   play: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M10 8.4l6 3.6-6 3.6z" fill="currentColor"/>',
   stop: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><rect x="9" y="9" width="6" height="6" rx="1.2" fill="currentColor"/>',
 };
@@ -51,7 +50,6 @@ const defaults = () => ({
   settings: {
     rooms: DEFAULT_ROOMS.slice(),
     unit: '',
-    flags: { noSecretary: false, noAide: false },
     theme: 'auto',
   },
   shift: null,
@@ -64,7 +62,6 @@ function load() {
   try {
     const raw = localStorage.getItem(STORE);
     if (raw) S = Object.assign(defaults(), JSON.parse(raw));
-    if (!S.settings.flags) S.settings.flags = { noSecretary: false, noAide: false };
   } catch (e) {
     console.warn('could not read saved data', e);
   }
@@ -123,21 +120,11 @@ function appliesToday(node, sh) {
   return true;
 }
 
-function sectionVisible(sec) {
-  if (!sec.flag) return true;
-  return !!S.settings.flags[sec.flag];
-}
-function nodeVisible(node, sh) {
-  if (node.flag && !S.settings.flags[node.flag]) return false;
-  return true;
-}
-
 /* ───────────────────────── progress counting ───────────────────────── */
 
 /* Counts every checkbox the user can actually see, so the ring never promises
  * progress on tasks that are hidden or not due tonight. */
 function countNode(node, path, sh, acc) {
-  if (!nodeVisible(node, sh)) return;
   const due = appliesToday(node, sh);
   if (node.repeat) {
     const list = sh.entries[path] || [];
@@ -175,7 +162,7 @@ function sectionProgress(sec, sh) {
 
 function overallProgress(sh) {
   const acc = { done: 0, total: 0 };
-  TEMPLATE.filter(sectionVisible).forEach((sec) => {
+  TEMPLATE.forEach((sec) => {
     const p = sectionProgress(sec, sh);
     acc.done += p.done;
     acc.total += p.total;
@@ -208,7 +195,7 @@ function render() {
     </div>
     <div class="track"><div class="fill" style="width:${prog.total ? (prog.done / prog.total) * 100 : 0}%"></div></div>`;
 
-  root.innerHTML = TEMPLATE.filter(sectionVisible).map((sec) => groupHTML(sec, sh)).join('');
+  root.innerHTML = TEMPLATE.map((sec) => groupHTML(sec, sh)).join('');
   renderTabs();
 }
 
@@ -235,7 +222,6 @@ function groupHTML(sec, sh) {
   const body = sec.kind === 'todo'
     ? todoHTML(sh)
     : (sec.items || [])
-        .filter((it) => nodeVisible(it, sh))
         .map((it) => nodeHTML(it, sec.id + '.' + it.id, sh, 0))
         .join('');
 
@@ -283,8 +269,6 @@ function badgeFor(node, path, sh) {
 }
 
 function nodeHTML(node, path, sh, depth) {
-  if (!nodeVisible(node, sh)) return '';
-
   // A "bare" node is only a container for its repeat list — drawing a checkbox
   // for it would just be a box you can never meaningfully tick.
   if (node.bare && node.repeat) return repeatHTML(node, path, sh);
@@ -314,7 +298,6 @@ function nodeHTML(node, path, sh, depth) {
   if (node.repeat) html += repeatHTML(node, path, sh);
   else if (node.children && node.children.length) {
     html += `<div class="children">${node.children
-      .filter((c) => nodeVisible(c, sh))
       .map((c) => nodeHTML(c, path + '.' + c.id, sh, depth + 1))
       .join('')}</div>`;
   }
@@ -382,7 +365,6 @@ function repeatHTML(node, path, sh) {
            placeholder="${esc(node.repeat.field.placeholder || '')}">`;
 
     const kids = (node.repeat.children || [])
-      .filter((c) => nodeVisible(c, sh))
       .map((c) => nodeHTML(c, epath + '.' + c.id, sh, 1))
       .join('');
 
@@ -401,7 +383,8 @@ function repeatHTML(node, path, sh) {
 
   const act = isRoom ? 'rooms-open' : 'entry-add';
   return `${entries}<div class="add-row">
-    <button class="add-btn" data-act="${act}" data-path="${esc(path)}">
+    <button class="add-btn" data-act="${act}" data-path="${esc(path)}"
+      data-any="${!!node.repeat.anyRoom}">
       <span class="plus">${svg('plus')}</span>${esc(node.repeat.addLabel || 'Add')}
     </button>
   </div>`;
@@ -553,17 +536,26 @@ function endShift() {
 /* ───────────────────────── sheets: rooms picker ───────────────────────── */
 
 let pickerPath = null;
+let pickerAny = false;
 let picked = [];
 
-function openRoomPicker(path) {
-  if (!S.settings.rooms.length) {
+function openRoomPicker(path, anyRoom) {
+  if (!S.settings.rooms.length && !anyRoom) {
     toast('Add room numbers in Settings first');
     openSettings();
     return;
   }
   pickerPath = path;
+  pickerAny = !!anyRoom;
   picked = [];
-  const used = new Set((S.shift.entries[path] || []).map((e) => e.name));
+  renderRoomPicker();
+}
+
+function renderRoomPicker() {
+  const used = new Set((S.shift.entries[pickerPath] || []).map((e) => e.name));
+  const onUnit = new Set(S.settings.rooms);
+  const typed = picked.filter((r) => !onUnit.has(r));   // rooms off the unit's list
+
   sheet(`
     <div class="sheet-nav">
       <button class="txt-btn" data-act="sheet-close">Cancel</button>
@@ -571,26 +563,55 @@ function openRoomPicker(path) {
       <button class="txt-btn strong" data-act="rooms-confirm">Add</button>
     </div>
     <div class="sheet-body">
-      <p>Tap as many as you need — they all get added at once. Rooms already on this list are dimmed.</p>
+      <p>Tap as many as you need — they all get added at once. Rooms already on this
+        list are dimmed.${pickerAny ? ' For anywhere outside the unit, type the room below.' : ''}</p>
+
+      ${pickerAny ? `
+        <div style="display:flex;gap:8px;padding:0 var(--gutter) 6px">
+          <input type="text" id="other-room" placeholder="Any room — e.g. 4W 12, ED 3"
+            enterkeyhint="done" autocapitalize="characters">
+          <button class="chip-add" data-act="other-add" style="flex:none">${svg('plus')} Add</button>
+        </div>
+        ${typed.length ? `<div class="room-chips">${typed.map((r) =>
+          `<span class="room-chip">${esc(r)}<button data-act="other-del" data-room="${esc(r)}"
+            aria-label="Remove ${esc(r)}">${svg('x')}</button></span>`).join('')}</div>`
+          : '<div style="height:8px"></div>'}` : ''}
+
       <div class="room-grid">
         ${S.settings.rooms.map((r) => `<button class="room-opt" data-act="room-pick" data-room="${esc(r)}"
-          aria-pressed="false" data-used="${used.has(r)}">${esc(r)}</button>`).join('')}
+          aria-pressed="${picked.includes(r)}" data-used="${used.has(r)}">${esc(r)}</button>`).join('')}
       </div>
     </div>`);
+
+  const inp = $('#other-room');
+  if (inp) inp.focus({ preventScroll: true });
+}
+
+/* Takes whatever is in the free-text box — one room, or several separated by
+ * commas — and stages it alongside the grid selections. */
+function addTypedRoom() {
+  const el = $('#other-room');
+  if (!el) return false;
+  const names = el.value.split(',').map((t) => t.trim()).filter(Boolean);
+  if (!names.length) return false;
+  names.forEach((n) => { if (!picked.includes(n)) picked.push(n); });
+  el.value = '';
+  return true;
 }
 
 function confirmRooms() {
+  addTypedRoom();                       // don't lose a room still sitting in the box
   if (!picked.length) { closeSheet(); return; }
   addEntries(pickerPath, picked.slice());
   const n = picked.length;
+  const first = picked[0];
   closeSheet();
-  toast(n === 1 ? `${picked[0]} added` : `${n} rooms added`);
+  toast(n === 1 ? `${first} added` : `${n} rooms added`);
 }
 
 /* ───────────────────────── sheets: settings ───────────────────────── */
 
 function openSettings() {
-  const f = S.settings.flags;
   sheet(`
     <div class="sheet-nav">
       <button class="txt-btn" data-act="sheet-close">Done</button>
@@ -616,20 +637,6 @@ function openSettings() {
               aria-label="Remove ${esc(r)}">${svg('x')}</button></span>`).join('')}</div>`
         : `<div class="group-footer">No rooms yet. Type a range like <b>3401-3420</b> or a
              comma-separated list and tap Add.</div>`}
-
-      <div class="group-header" style="padding-top:14px"><span class="gh-title">Tonight's coverage</span></div>
-      <div class="card">
-        <div class="toggle">
-          <div class="toggle-text">No secretary
-            <small>Adds the chart, sticker, consult and lab tasks you have to absorb.</small></div>
-          <button class="switch" role="switch" aria-checked="${f.noSecretary}" data-act="flag" data-flag="noSecretary"></button>
-        </div>
-        <div class="toggle">
-          <div class="toggle-text">No aide
-            <small>Shows the chem stick, bath and restock section.</small></div>
-          <button class="switch" role="switch" aria-checked="${f.noAide}" data-act="flag" data-flag="noAide"></button>
-        </div>
-      </div>
 
       <div class="group-header" style="padding-top:22px"><span class="gh-title">Appearance</span></div>
       <div class="card">
@@ -705,7 +712,7 @@ function openReport() {
   if (!sh) { openHistory(); return; }
   const p = overallProgress(sh);
   const outstanding = [];
-  TEMPLATE.filter(sectionVisible).forEach((sec) => {
+  TEMPLATE.forEach((sec) => {
     const q = sectionProgress(sec, sh);
     if (q.total - q.done > 0) outstanding.push(`${sec.title} — ${q.total - q.done} left`);
   });
@@ -780,7 +787,6 @@ function openHistShift(id) {
 function walk(sh) {
   const out = [];
   TEMPLATE.forEach((sec) => {
-    if (sec.flag && !S.settings.flags[sec.flag]) return;
     const lines = [];
 
     if (sec.kind === 'todo') {
@@ -802,7 +808,6 @@ function walk(sh) {
 }
 
 function nodeReport(node, path, sh) {
-  if (node.flag && !S.settings.flags[node.flag]) return null;
   if (!appliesToday(node, sh)) return null;   // a Tuesday task on a Thursday is noise
 
   const done = !!sh.checks[path];
@@ -953,7 +958,14 @@ document.addEventListener('click', (ev) => {
       break;
     }
 
-    case 'rooms-open': openRoomPicker(path); break;
+    case 'rooms-open': openRoomPicker(path, el.dataset.any === 'true'); break;
+    case 'other-add':
+      if (addTypedRoom()) renderRoomPicker();
+      break;
+    case 'other-del':
+      picked = picked.filter((r) => r !== el.dataset.room);
+      renderRoomPicker();
+      break;
     case 'room-pick': {
       const r = el.dataset.room;
       const on = el.getAttribute('aria-pressed') === 'true';
@@ -1001,7 +1013,7 @@ document.addEventListener('click', (ev) => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       break;
     case 'collapse-all': {
-      const ids = TEMPLATE.filter(sectionVisible).map((x) => x.id);
+      const ids = TEMPLATE.map((x) => x.id);
       const anyOpen = ids.some((id) => S.shift.open[id] !== false);
       ids.forEach((id) => { S.shift.open[id] = !anyOpen; });
       save();
@@ -1025,13 +1037,6 @@ document.addEventListener('click', (ev) => {
       openSettings();
       break;
 
-    case 'flag': {
-      const k = el.dataset.flag;
-      S.settings.flags[k] = !S.settings.flags[k];
-      el.setAttribute('aria-checked', String(S.settings.flags[k]));
-      save();
-      break;
-    }
     case 'theme': {
       S.settings.theme = S.settings.theme === 'dark' ? 'auto' : 'dark';
       el.setAttribute('aria-checked', String(S.settings.theme === 'dark'));
@@ -1099,6 +1104,10 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key !== 'Enter') return;
   if (ev.target.id === 'todo-input') { ev.preventDefault(); addTodo(); }
   if (ev.target.id === 'room-input') { ev.preventDefault(); addRooms(); }
+  if (ev.target.id === 'other-room') {
+    ev.preventDefault();
+    if (addTypedRoom()) renderRoomPicker();
+  }
 });
 
 /* keep the elapsed clock and the Q2 / 0700 cues honest */

@@ -55,6 +55,11 @@ documentation. The same cue sits on the 0700 CRRT charge.
 **Situations.** On RRT handoffs and incident reports, **Add situation** gives you
 another text box. Add as many as you need per room.
 
+**RRTs anywhere in the hospital.** RRTs are not confined to the unit, so that
+picker has a text box above the grid. Type any room — `4W 12`, `ED 3` — and press
+return to stage it; it gets added alongside whatever you tapped on the grid. The
+unit's own pickers stay restricted to the CCU list.
+
 **(i) buttons** hold the detail that does not fit on one line — the Tele Tracker
 menu path, what counts on the pull log, what to flag off the OR board.
 
@@ -66,9 +71,10 @@ A night shift spans two dates, so "Tuesday" means **the night that starts on
 Tuesday and runs into Wednesday** — the shift keeps its Tuesday label after
 midnight, and a Monday night that happens to end on Tuesday does not count.
 
-**Coverage toggles.** In Settings, *No secretary* and *No aide* switch on the
-extra work you absorb when you are short — the chart/sticker/consult/lab tasks,
-and the chem stick, bath and restock section.
+**Working short.** There is no secretary on nights, so that work sits in Forms &
+Logs as ordinary tasks. The chem stick, bath and restock list sits at the bottom
+under *If No Aide on the Floor* — tick it on the nights it applies and skip it
+otherwise.
 
 **Report.** The Report tab shows a plain-text version of the whole checklist with
 timestamps, ticked and unticked alike. **Copy as text** puts it on the clipboard.

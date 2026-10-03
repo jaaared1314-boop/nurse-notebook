@@ -18,6 +18,8 @@
  *   children  nested subtasks
  *   repeat    makes the task a "+ Add" list: one entry per room/item
  *               {addLabel, field, children}
+ *               anyRoom: true lets the room picker take a typed room from
+ *               anywhere in the hospital, not just the unit's own list
  *   bare      the task exists only to host its repeat list — render the
  *             "+ Add" button without a checkbox row of its own
  *   when      only applies on certain days. The day is the day the SHIFT
@@ -28,7 +30,6 @@
  *   at        time-of-day cue, "HH:MM" — highlights as that time approaches.
  *             Resolved to the first occurrence at or after the shift start, so
  *             06:00 on a night shift means tomorrow morning, not this morning.
- *   flag      hidden unless the matching Settings toggle is on
  */
 
 const TEMPLATE = [
@@ -150,8 +151,8 @@ const TEMPLATE = [
       },
       {
         id: 'nosecretary',
-        label: 'No secretary on the floor — covering their work',
-        flag: 'noSecretary',
+        label: 'Secretary work',
+        note: 'There is no secretary on nights, so this is yours.',
         children: [
           { id: 'charts', label: 'Charts made for admissions / transfers' },
           { id: 'stickers', label: 'Stickers placed in logs' },
@@ -268,6 +269,7 @@ const TEMPLATE = [
         repeat: {
           addLabel: 'Add rooms',
           field: { type: 'room' },
+          anyRoom: true,
           children: [
             {
               id: 'situation',
@@ -305,9 +307,8 @@ const TEMPLATE = [
 
   {
     id: 'noaide',
-    title: 'No Aide on the Floor',
-    flag: 'noAide',
-    blurb: 'Turn this section on in Settings when you are working short an aide.',
+    title: 'If No Aide on the Floor',
+    blurb: 'Only applies on the nights you are working short an aide. Skip it otherwise.',
     items: [
       {
         id: 'chemsticks',

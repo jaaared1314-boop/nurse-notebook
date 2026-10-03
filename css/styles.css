@@ -264,7 +264,19 @@ select {
   background: var(--bg-field); border-radius: 8px;
   padding: 7px 7px 7px 11px; min-height: 34px;
 }
-.chip button { color: var(--label-2); font-size: 17px; line-height: 1; padding: 0 3px; }
+.chip button { color: var(--label-2); }
+.chip button,
+.room-chip button {
+  display: grid; place-items: center;
+  flex: none; width: 26px; height: 26px;
+  margin: -3px -3px -3px 1px; padding: 0;
+  border-radius: 50%;
+}
+.chip button svg,
+.room-chip button svg { width: 14px; height: 14px; }
+.chip button:active,
+.room-chip button:active { background: var(--bg-field); color: var(--red); }
+
 .chip-add {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 15px; font-weight: 500; letter-spacing: -0.24px; color: var(--blue);
@@ -450,7 +462,7 @@ select {
   background: var(--bg-grouped); border-radius: 8px;
   padding: 8px 8px 8px 11px; min-height: 36px;
 }
-.room-chip button { color: var(--label-2); font-size: 17px; line-height: 1; padding: 0 3px; }
+.room-chip button { color: var(--label-2); }
 
 .hist {
   display: flex; align-items: center; gap: 12px;
