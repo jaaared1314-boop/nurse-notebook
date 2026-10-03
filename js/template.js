@@ -131,8 +131,8 @@ const TEMPLATE = [
         help: 'If someone is on incentive AND on-call / low-census / pulled, they are not counted on the pull list.',
       },
       {
-        id: 'impact',
-        label: 'IMPACT / MIDAS reports',
+        id: 'incident',
+        label: 'Incident reports',
         note: 'File them, or delegate to management.',
         repeat: {
           addLabel: 'Add situation',
@@ -258,7 +258,7 @@ const TEMPLATE = [
       {
         id: 'scan',
         label: 'Assignment / checklist scanned at end of shift',
-        note: 'To Tory / Christina.',
+        note: 'To the unit managers.',
         children: [{ id: 'copies', label: 'Copies made of the assignment sheets' }],
       },
       {

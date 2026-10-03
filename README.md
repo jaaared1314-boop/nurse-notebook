@@ -52,8 +52,8 @@ verified* box that stays quiet most of the night and lights up as 0600
 approaches, which is when you confirm the bedside nurse has finished their
 documentation. The same cue sits on the 0700 CRRT charge.
 
-**Situations.** On RRT handoffs and IMPACT/MIDAS reports, **Add situation** gives
-you another text box. Add as many as you need per room.
+**Situations.** On RRT handoffs and incident reports, **Add situation** gives you
+another text box. Add as many as you need per room.
 
 **(i) buttons** hold the detail that does not fit on one line — the Tele Tracker
 menu path, what counts on the pull log, what to flag off the OR board.
