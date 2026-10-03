@@ -20,10 +20,14 @@
  *               {addLabel, field, children}
  *   bare      the task exists only to host its repeat list — render the
  *             "+ Add" button without a checkbox row of its own
- *   when      only applies on certain days
+ *   when      only applies on certain days. The day is the day the SHIFT
+ *             STARTED, so {dow:2} means the Tuesday night going into
+ *             Wednesday — not the night that ends on a Tuesday.
  *               {dow:2}       day of week (0=Sun … 2=Tue)
  *               {dow:2, firstOfMonth:true}
- *   at        time-of-day cue, "HH:MM" — highlights when that time is near/past
+ *   at        time-of-day cue, "HH:MM" — highlights as that time approaches.
+ *             Resolved to the first occurrence at or after the shift start, so
+ *             06:00 on a night shift means tomorrow morning, not this morning.
  *   flag      hidden unless the matching Settings toggle is on
  */
 
@@ -62,7 +66,7 @@ const TEMPLATE = [
   {
     id: 'restraints',
     title: 'Restraints',
-    blurb: 'Q2 charting is time-based — the app shows you when each patient is next due.',
+    blurb: 'The Q2 check is yours to verify at 0600, once the bedside nurse has finished documenting.',
     items: [
       {
         id: 'patient',
@@ -71,7 +75,6 @@ const TEMPLATE = [
         repeat: {
           addLabel: 'Add rooms',
           field: { type: 'room' },
-          q2: true,
           children: [
             {
               id: 'order',
@@ -81,9 +84,10 @@ const TEMPLATE = [
             { id: 'sticker', label: 'Stickered in log book' },
             {
               id: 'q2',
-              label: 'Q2 charting done',
-              field: { type: 'times' },
-              help: 'Tap "Log time" each time Q2 charting is completed for this patient. The app shows the next due time based on the last entry.',
+              label: 'Q2 charting verified',
+              note: 'At 0600, once the bedside nurse has documented.',
+              at: '06:00',
+              help: 'Check this off at 0600 after confirming the bedside nurse has completed all Q2 restraint documentation for the shift. If anything is missing, it is far easier to fix now than after they clock out.',
             },
             { id: 'careplan', label: 'Care plan' },
           ],
@@ -99,13 +103,13 @@ const TEMPLATE = [
       {
         id: 'narc',
         label: 'Narc count',
-        note: 'Tuesdays',
+        note: 'The Tuesday night going into Wednesday.',
         when: { dow: 2 },
       },
       {
         id: 'ioaudit',
         label: 'I&O audit',
-        note: 'First Tuesday of the month',
+        note: 'The first Tuesday night of the month.',
         when: { dow: 2, firstOfMonth: true },
       },
       {

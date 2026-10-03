@@ -7,7 +7,9 @@
 
 const STORE = 'cnc.v2';
 const SHIFT_TYPE = 'night';           // 19:00–07:00
-const Q2_MINUTES = 120;
+
+/* The unit's rooms, ready on first launch. Editable in Settings. */
+const DEFAULT_ROOMS = Array.from({ length: 15 }, (_, i) => 'CCU ' + (i + 16));
 
 /* ───────────────────────── icons (stroked, SF-ish) ───────────────────────── */
 
@@ -46,7 +48,12 @@ const blankShift = () => ({
 
 const defaults = () => ({
   v: 2,
-  settings: { rooms: [], unit: '', flags: { noSecretary: false, noAide: false }, theme: 'auto' },
+  settings: {
+    rooms: DEFAULT_ROOMS.slice(),
+    unit: '',
+    flags: { noSecretary: false, noAide: false },
+    theme: 'auto',
+  },
   shift: null,
   history: [],
 });
@@ -101,24 +108,19 @@ function haptic() {
   if (navigator.vibrate) navigator.vibrate(8);
 }
 
-/* Which calendar days does this shift touch? A night shift spans two, so a
- * "Tuesday" task counts if either end of the shift lands on Tuesday. */
-function shiftDays(sh) {
-  const out = [];
-  if (!sh) return [new Date()];
-  out.push(new Date(sh.start));
-  const end = sh.end ? new Date(sh.end) : new Date();
-  if (end.toDateString() !== out[0].toDateString()) out.push(end);
-  return out;
+/* A night shift spans two dates, so "Tuesday" is ambiguous until you pick an
+ * end. The unit names shifts by the night they begin — the narc count is the
+ * Tuesday night going into Wednesday — so day rules read the START date. */
+function shiftDay(sh) {
+  return sh ? new Date(sh.start) : new Date();
 }
 
 function appliesToday(node, sh) {
   if (!node.when) return true;
-  return shiftDays(sh).some((d) => {
-    if (d.getDay() !== node.when.dow) return false;
-    if (node.when.firstOfMonth && d.getDate() > 7) return false;
-    return true;
-  });
+  const d = shiftDay(sh);
+  if (d.getDay() !== node.when.dow) return false;
+  if (node.when.firstOfMonth && d.getDate() > 7) return false;
+  return true;
 }
 
 function sectionVisible(sec) {
@@ -251,6 +253,16 @@ function groupHTML(sec, sh) {
   </section>`;
 }
 
+/* First time HH:MM lands at or after the shift started. */
+function nextOccurrence(hhmmStr, sh) {
+  const [h, m] = hhmmStr.split(':').map(Number);
+  const start = sh ? new Date(sh.start) : new Date();
+  const t = new Date(start);
+  t.setHours(h, m, 0, 0);
+  if (t < start) t.setDate(t.getDate() + 1);
+  return t;
+}
+
 function badgeFor(node, path, sh) {
   const bits = [];
   if (node.when) {
@@ -261,13 +273,11 @@ function badgeFor(node, path, sh) {
       : `<span class="badge">${esc(label)} only</span>`);
   }
   if (node.at && !sh.checks[path]) {
-    const [h, m] = node.at.split(':').map(Number);
-    const now = new Date();
-    const target = new Date(now);
-    target.setHours(h, m, 0, 0);
-    const mins = (target - now) / 60000;
-    if (mins <= 0) bits.push(`<span class="badge over">${esc(node.at.replace(':', ''))} passed</span>`);
-    else if (mins <= 90) bits.push(`<span class="badge due">in ${Math.round(mins)}m</span>`);
+    const target = nextOccurrence(node.at, sh);
+    const mins = (target - Date.now()) / 60000;
+    const label = node.at.replace(':', '');
+    if (mins <= 0) bits.push(`<span class="badge over">${esc(label)} passed</span>`);
+    else if (mins <= 90) bits.push(`<span class="badge due">${esc(label)} · in ${Math.round(mins)}m</span>`);
   }
   return bits.join('');
 }
@@ -385,7 +395,6 @@ function repeatHTML(node, path, sh) {
         <button class="entry-del" data-act="entry-del" data-path="${esc(epath)}"
           aria-label="Remove ${esc(e.name || 'entry')}">${svg('trash')}</button>
       </div>
-      ${node.repeat.q2 ? q2HTML(epath, sh) : ''}
       ${kids ? `<div class="children">${kids}</div>` : ''}
     </div>`;
   }).join('');
@@ -396,21 +405,6 @@ function repeatHTML(node, path, sh) {
       <span class="plus">${svg('plus')}</span>${esc(node.repeat.addLabel || 'Add')}
     </button>
   </div>`;
-}
-
-/* Restraint Q2: next-due read off the last logged charting time. */
-function q2HTML(epath, sh) {
-  const times = sh.values[epath + '.q2'];
-  if (!Array.isArray(times) || !times.length) {
-    return `<div class="q2">${svg('clock', 'chev')} No Q2 charting logged yet</div>`;
-  }
-  const last = new Date(times[times.length - 1]);
-  const due = new Date(last.getTime() + Q2_MINUTES * 60000);
-  const mins = Math.round((due - Date.now()) / 60000);
-  const cls = mins < 0 ? 'over' : mins <= 20 ? 'due' : '';
-  const txt = mins < 0 ? `Q2 overdue by ${-mins}m` : `Q2 due ${hhmm(due)} · in ${mins}m`;
-  return `<div class="q2">Last charted ${hhmm(last)}
-    <span class="badge plain ${cls}">${esc(txt)}</span></div>`;
 }
 
 function todoHTML(sh) {
@@ -660,22 +654,33 @@ function openSettings() {
     </div>`);
 }
 
-/* "3401-3404, 3410" -> ['3401','3402','3403','3404','3410'] */
+/* Turns what you'd actually type into a room list:
+ *   "CCU 16 - CCU 30"      -> CCU 16 … CCU 30
+ *   "3401-3404, 3410"      -> 3401, 3402, 3403, 3404, 3410
+ *   "CCU 16, CCU 18"       -> kept as written, spaces and all           */
 function expandRooms(raw) {
   const out = [];
-  raw.split(/[,\s]+/).filter(Boolean).forEach((tok) => {
-    const m = tok.match(/^(\D*)(\d+)\s*[-–—]\s*(\d+)(\D*)$/);
+  String(raw).split(',').forEach((piece) => {
+    const part = piece.trim();
+    if (!part) return;
+
+    // A range: optional prefix, a number, a dash, then the end number. The
+    // prefix may repeat after the dash ("CCU 16 - CCU 30"), which we ignore.
+    const m = part.match(/^(.*?)(\d+)\s*[-–—]\s*(?:.*?)(\d+)\s*$/);
     if (m) {
-      const [, pre, a, b, post] = m;
-      let lo = parseInt(a, 10);
-      let hi = parseInt(b, 10);
+      const pre = m[1];
+      let lo = parseInt(m[2], 10);
+      let hi = parseInt(m[3], 10);
       if (hi < lo) [lo, hi] = [hi, lo];
-      if (hi - lo > 200) hi = lo + 200;          // guard against a typo like 1-99999
-      const width = a.length;
-      for (let n = lo; n <= hi; n++) out.push(pre + String(n).padStart(width, '0') + post);
-    } else {
-      out.push(tok);
+      if (hi - lo > 200) hi = lo + 200;        // a typo like 1-99999 shouldn't hang the app
+      const width = m[2].startsWith('0') ? m[2].length : 1;
+      for (let n = lo; n <= hi; n++) out.push(pre + String(n).padStart(width, '0'));
+      return;
     }
+
+    // No range. A bare "3401 3402 3403" is three rooms; "CCU 16" is one.
+    if (/[A-Za-z]/.test(part)) out.push(part);
+    else part.split(/\s+/).filter(Boolean).forEach((t) => out.push(t));
   });
   return out;
 }

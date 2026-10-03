@@ -19,10 +19,10 @@ device.
 You now have a *Charge* icon. Opening it gives you a full-screen app with no
 browser bar, and it works with no signal at all.
 
-4. **Set it up**: open **Settings** in the app and add your unit's rooms. Type a
-   range like `3401-3420` and it expands to every room in between; commas work
-   too (`3401-3412, 3415, 3418`). Every room dropdown in the app reads from this
-   list.
+4. **Check your rooms.** CCU 16 through CCU 30 are already loaded, so there is
+   nothing to do unless the unit changes. If it does, open **Settings** and type
+   a range like `CCU 16 - CCU 30` or `3401-3420` and it expands to every room in
+   between; commas separate rooms that are not in a run (`CCU 16, CCU 22`).
 
 ### When I push an update
 
@@ -44,10 +44,13 @@ added at once, each with its own set of subtasks. Rooms already on the list are
 dimmed so you do not double up. The trash icon removes a room and everything
 logged under it.
 
-**Times.** On restraint Q2 charting and chem sticks, **Log time** stamps the
-current time. You can log as many as the shift needs. For restraints, the app
-reads the last time you logged and tells you when that patient is next due —
-turning amber at 20 minutes out and red once it is overdue.
+**Times.** On chem sticks, **Log time** stamps the current time, as many times as
+the shift needs.
+
+**The 0600 restraint check.** Each restrained patient gets a *Q2 charting
+verified* box that stays quiet most of the night and lights up as 0600
+approaches, which is when you confirm the bedside nurse has finished their
+documentation. The same cue sits on the 0700 CRRT charge.
 
 **Situations.** On RRT handoffs and IMPACT/MIDAS reports, **Add situation** gives
 you another text box. Add as many as you need per room.
@@ -55,10 +58,13 @@ you another text box. Add as many as you need per room.
 **(i) buttons** hold the detail that does not fit on one line — the Tele Tracker
 menu path, what counts on the pull log, what to flag off the OR board.
 
-**Day-aware.** Narc count only counts toward your progress on a Tuesday, and the
-I&O audit only on the first Tuesday of the month. The rest of the time they sit
-there greyed out and labelled, rather than vanishing. Because a night shift spans
-two dates, either end of the shift landing on Tuesday counts.
+**Day-aware.** The narc count only counts toward your progress on a Tuesday
+night, and the I&O audit only on the first Tuesday night of the month. The rest
+of the time they sit there greyed out and labelled, rather than vanishing.
+
+A night shift spans two dates, so "Tuesday" means **the night that starts on
+Tuesday and runs into Wednesday** — the shift keeps its Tuesday label after
+midnight, and a Monday night that happens to end on Tuesday does not count.
 
 **Coverage toggles.** In Settings, *No secretary* and *No aide* switch on the
 extra work you absorb when you are short — the chart/sticker/consult/lab tasks,
