@@ -243,7 +243,7 @@ const TEMPLATE = [
     id: 'handoff',
     title: 'Handoff & Staffing',
     items: [
-      { id: 'primary', label: 'Primary nurse contact identified', field: { type: 'text', placeholder: 'Name / ext' } },
+      { id: 'primary', label: 'Primary nurse contact identified' },
       {
         id: 'orboard',
         label: 'OR board checked for the next day',
