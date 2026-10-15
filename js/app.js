@@ -141,8 +141,16 @@ function countNode(node, path, sh, acc) {
     return;
   }
   if (!due) return;          // its subtasks aren't due tonight either
-  acc.total++;
-  if (sh.checks[path]) acc.done++;
+  if (!node.bare) {
+    acc.total++;
+    if (sh.checks[path]) acc.done++;
+  }
+  if (node.field && node.field.type === 'schedule') {
+    schedList(sh, path).forEach((it) => {
+      acc.total++;
+      if (it.done) acc.done++;
+    });
+  }
   (node.children || []).forEach((c) => countNode(c, path + '.' + c.id, sh, acc));
 }
 
@@ -238,6 +246,33 @@ function groupHTML(sec, sh) {
   </section>`;
 }
 
+/* A schedule is stored as [{uid, time:'HH:MM', done:ISO|null}]. */
+function schedList(sh, path) {
+  const v = sh.values[path];
+  return Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : [];
+}
+
+/* Shown in shift order, so 2100, 0100, 0500 reads top to bottom on nights. */
+function schedSorted(sh, path) {
+  return schedList(sh, path).slice().sort((a, b) => {
+    if (!a.time) return 1;
+    if (!b.time) return -1;
+    return nextOccurrence(a.time, sh) - nextOccurrence(b.time, sh);
+  });
+}
+
+/* New rows start an hour after the latest one, or on the next whole hour. */
+function nextSchedTime(sh, path) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const timed = schedSorted(sh, path).filter((x) => x.time);
+  if (timed.length) {
+    const [h, m] = timed[timed.length - 1].time.split(':').map(Number);
+    return pad((h + 1) % 24) + ':' + pad(m);
+  }
+  const d = new Date();
+  return pad((d.getHours() + 1) % 24) + ':00';
+}
+
 /* First time HH:MM lands at or after the shift started. */
 function nextOccurrence(hhmmStr, sh) {
   const [h, m] = hhmmStr.split(':').map(Number);
@@ -271,6 +306,7 @@ function nodeHTML(node, path, sh, depth) {
   // A "bare" node is only a container for its repeat list — drawing a checkbox
   // for it would just be a box you can never meaningfully tick.
   if (node.bare && node.repeat) return repeatHTML(node, path, sh);
+  if (node.bare && node.field) return fieldHTML(node, path, sh);
 
   const checked = !!sh.checks[path];
   const due = appliesToday(node, sh);
@@ -308,13 +344,35 @@ function fieldHTML(node, path, sh) {
   const f = node.field;
   const v = sh.values[path];
 
-  if (f.type === 'times') {
-    const times = Array.isArray(v) ? v : [];
-    return `<div class="chips">
-      ${times.map((t, i) => `<span class="chip">${hhmm(t)}
-        <button data-act="time-del" data-path="${esc(path)}" data-i="${i}" aria-label="Remove ${hhmm(t)}">${svg('x')}</button>
-      </span>`).join('')}
-      <button class="chip-add" data-act="time-add" data-path="${esc(path)}">${svg('plus')} Log time</button>
+  if (f.type === 'schedule') {
+    const rows = schedSorted(sh, path).map((it) => {
+      let cue = '';
+      if (!it.done && it.time) {
+        const mins = Math.round((nextOccurrence(it.time, sh) - Date.now()) / 60000);
+        if (mins <= 0) cue = `<span class="badge over">Overdue</span>`;
+        else if (mins <= 30) cue = `<span class="badge due">in ${mins}m</span>`;
+      }
+      const due = it.time ? it.time.replace(':', '') : 'time';
+      return `<div class="row ${it.done ? 'done' : ''}">
+        <div class="row-inner sched">
+          <button class="check" role="checkbox" aria-checked="${!!it.done}" data-act="sched-check"
+            data-path="${esc(path)}" data-uid="${esc(it.uid)}"
+            aria-label="${esc(node.label)} due ${esc(due)}">${svg('check')}</button>
+          <div class="row-main"><div class="row-title">
+            <input type="time" class="time-in" data-act="sched-time" data-path="${esc(path)}"
+              data-uid="${esc(it.uid)}" value="${esc(it.time || '')}" aria-label="Due time">
+            ${cue}
+            ${it.done ? `<span class="stamp">done ${hhmm(it.done)}</span>` : ''}
+          </div></div>
+          <button class="entry-del" data-act="sched-del" data-path="${esc(path)}" data-uid="${esc(it.uid)}"
+            aria-label="Remove ${esc(due)}">${svg('trash')}</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `${rows}<div class="add-row">
+      <button class="add-btn" data-act="sched-add" data-path="${esc(path)}">
+        <span class="plus">${svg('plus')}</span>Add time
+      </button>
     </div>`;
   }
 
@@ -794,16 +852,20 @@ function walk(sh) {
       }));
     } else {
       (sec.items || []).forEach((it) => {
-        const n = nodeReport(it, sec.id + '.' + it.id, sh);
-        if (!n) return;
         // a bare host contributes its entries directly, not an empty parent line
-        if (n.bare) lines.push(...n.kids);
-        else lines.push(n);
+        pushReport(lines, nodeReport(it, sec.id + '.' + it.id, sh));
       });
     }
     if (lines.length) out.push({ title: sec.title, lines });
   });
   return out;
+}
+
+/* A bare node contributes its lines straight into the parent's list. */
+function pushReport(list, n) {
+  if (!n) return;
+  if (n.bare) list.push(...n.kids);
+  else list.push(n);
 }
 
 function nodeReport(node, path, sh) {
@@ -816,9 +878,9 @@ function nodeReport(node, path, sh) {
   if (node.repeat) {
     (sh.entries[path] || []).forEach((e) => {
       const epath = path + '#' + e.uid;
-      const ekids = (node.repeat.children || [])
-        .map((c) => nodeReport(c, epath + '.' + c.id, sh))
-        .filter(Boolean);
+      const ekids = [];
+      (node.repeat.children || []).forEach((c) =>
+        pushReport(ekids, nodeReport(c, epath + '.' + c.id, sh)));
       kids.push({
         done: !!sh.checks[epath], at: sh.checks[epath] || null,
         label: e.name || '(unnamed)', kids: ekids,
@@ -828,18 +890,22 @@ function nodeReport(node, path, sh) {
     if (!kids.length) return null;
     if (node.bare) return { bare: true, kids };
   } else {
-    (node.children || []).forEach((c) => {
-      const n = nodeReport(c, path + '.' + c.id, sh);
-      if (n) kids.push(n);
-    });
+    (node.children || []).forEach((c) =>
+      pushReport(kids, nodeReport(c, path + '.' + c.id, sh)));
+  }
+
+  if (node.field && node.field.type === 'schedule') {
+    schedSorted(sh, path).forEach((it) => kids.push({
+      done: !!it.done, at: it.done || null,
+      label: 'Due ' + (it.time ? it.time.replace(':', '') : '(no time)'), value: '', kids: [],
+    }));
+    if (node.bare) return kids.length ? { bare: true, kids } : null;
   }
 
   const v = sh.values[path];
   let value = '';
   if (Array.isArray(v)) {
-    value = node.field && node.field.type === 'times'
-      ? v.map(hhmm).join(', ')
-      : v.filter(Boolean).join(' · ');
+    value = v.filter(Boolean).join(' · ');
   } else if (v) {
     value = String(v);
   }
@@ -979,8 +1045,32 @@ document.addEventListener('click', (ev) => {
     case 'entry-add': addEntries(path, ['']); break;
     case 'entry-del': delEntry(path); break;
 
-    case 'time-add': listPush(path, new Date().toISOString()); haptic(); break;
-    case 'time-del': listRemove(path, +el.dataset.i); break;
+    case 'sched-add': {
+      const list = schedList(S.shift, path);
+      list.push({ uid: uid(), time: nextSchedTime(S.shift, path), done: null });
+      S.shift.values[path] = list;
+      save();
+      render();
+      break;
+    }
+    case 'sched-check': {
+      const it = schedList(S.shift, path).find((x) => x.uid === el.dataset.uid);
+      if (it) {
+        it.done = it.done ? null : new Date().toISOString();
+        haptic();
+        save();
+        render();
+      }
+      break;
+    }
+    case 'sched-del': {
+      const list = schedList(S.shift, path).filter((x) => x.uid !== el.dataset.uid);
+      if (list.length) S.shift.values[path] = list;
+      else delete S.shift.values[path];
+      save();
+      render();
+      break;
+    }
     case 'tl-add': listPush(path, ''); break;
     case 'tl-del': listRemove(path, +el.dataset.i); break;
 
@@ -1096,6 +1186,13 @@ document.addEventListener('input', (ev) => {
 document.addEventListener('change', (ev) => {
   const el = ev.target.closest('[data-act="val"]');
   if (el && el.tagName === 'SELECT') { setValue(el.dataset.path, el.value); render(); }
+
+  // the time wheel commits on close, so re-sort only then
+  const t = ev.target.closest('[data-act="sched-time"]');
+  if (t) {
+    const it = schedList(S.shift, t.dataset.path).find((x) => x.uid === t.dataset.uid);
+    if (it) { it.time = t.value; save(); render(); }
+  }
 });
 
 /* Enter submits the quick-add fields */

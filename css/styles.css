@@ -256,25 +256,29 @@ select {
   background-repeat: no-repeat; background-position: right 10px center; background-size: 16px;
 }
 
-.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 var(--gutter) 11px 0; }
-.children .chips { padding-right: var(--gutter); }
-.chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 15px; letter-spacing: -0.24px; font-variant-numeric: tabular-nums;
-  background: var(--bg-field); border-radius: 8px;
-  padding: 7px 7px 7px 11px; min-height: 34px;
+/* scheduled check: the due time is an iOS-style pill that opens the time wheel */
+.row-inner.sched { align-items: center; padding-top: 7px; padding-bottom: 7px; }
+.time-in {
+  appearance: none; -webkit-appearance: none;
+  min-height: 34px; padding: 5px 11px;
+  background: var(--bg-field); border: none; border-radius: 8px;
+  font-size: 17px; letter-spacing: -0.41px; font-variant-numeric: tabular-nums;
+  color: var(--label);
 }
-.chip button { color: var(--label-2); }
-.chip button,
+.time-in:focus { outline: 2px solid var(--blue); outline-offset: 0; }
+.row.done > .row-inner .time-in { color: var(--label-2); }
+
+/* a schedule's "Add time" sits inside a room, aligned with its rows */
+.children .add-row { padding-left: 0; }
+.children .row + .add-row::before { left: 0; }
+
 .room-chip button {
   display: grid; place-items: center;
   flex: none; width: 26px; height: 26px;
   margin: -3px -3px -3px 1px; padding: 0;
   border-radius: 50%;
 }
-.chip button svg,
 .room-chip button svg { width: 14px; height: 14px; }
-.chip button:active,
 .room-chip button:active { background: var(--bg-field); color: var(--red); }
 
 .chip-add {

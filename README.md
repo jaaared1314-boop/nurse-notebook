@@ -44,8 +44,11 @@ added at once, each with its own set of subtasks. Rooms already on the list are
 dimmed so you do not double up. The trash icon removes a room and everything
 logged under it.
 
-**Times.** On chem sticks, **Log time** stamps the current time, as many times as
-the shift needs.
+**Chem sticks.** Add the rooms, then tap **Add time** under each one for every
+check that room needs tonight. Tap the time to set it on the iPhone's time wheel.
+Each one gets its own checkbox, and ticking it records when you actually did it.
+The list sorts itself in shift order (2100 before 0100), shows *in 20m* as one
+comes up, and *Overdue* once it has passed unticked.
 
 **The 0600 restraint check.** Each restrained patient gets a *Q2 charting
 verified* box that stays quiet most of the night and lights up as 0600

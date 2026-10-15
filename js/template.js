@@ -11,7 +11,8 @@
  *   field     an input attached to the task:
  *               {type:'room'}      room dropdown, populated from Settings
  *               {type:'text', placeholder}
- *               {type:'times'}     a list of timestamps you add with one tap
+ *               {type:'schedule'}  checkboxes you add one at a time, each with
+ *                                  a due time picked on the iPhone's time wheel
  *               {type:'textlist', placeholder, addLabel}
  *                                  several free-text lines, added one at a time
  *               {type:'longtext'}   multi-line box for the shift report
@@ -20,8 +21,8 @@
  *               {addLabel, field, children}
  *               anyRoom: true lets the room picker take a typed room from
  *               anywhere in the hospital, not just the unit's own list
- *   bare      the task exists only to host its repeat list — render the
- *             "+ Add" button without a checkbox row of its own
+ *   bare      the task exists only to host its repeat list or schedule —
+ *             render that without a checkbox row of its own
  *   when      only applies on certain days, along with all of its subtasks.
  *             The day is the day the SHIFT
  *             STARTED, so {dow:2} means the Tuesday night going into
@@ -326,11 +327,12 @@ const TEMPLATE = [
       {
         id: 'chemsticks',
         label: 'Chem sticks',
+        note: 'Add a room, then add each time its check is due.',
         repeat: {
           addLabel: 'Add rooms',
           field: { type: 'room' },
           children: [
-            { id: 'times', label: 'Checks', field: { type: 'times' } },
+            { id: 'sched', label: 'Chem stick', bare: true, field: { type: 'schedule' } },
           ],
         },
       },
