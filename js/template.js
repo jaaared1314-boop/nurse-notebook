@@ -198,6 +198,13 @@ const TEMPLATE = [
         ],
       },
       {
+        id: 'cartexpiry',
+        label: 'Code cart supply expiration dates checked',
+        note: 'The first Sunday night of the month — all three carts.',
+        when: { dow: 0, firstOfMonth: true },
+        help: 'Work through each cart drawer by drawer. Anything expiring before the next first Sunday should come out now rather than next month, since nobody checks it again until then. Replace what you pull before the end of the shift so the cart is not left short.',
+      },
+      {
         id: 'templog',
         label: 'Temp log',
         children: [
