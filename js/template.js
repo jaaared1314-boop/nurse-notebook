@@ -23,7 +23,10 @@
  *               anywhere in the hospital, not just the unit's own list
  *   bare      the task exists only to host its repeat list or schedule —
  *             render that without a checkbox row of its own
+ *   short     shorter name for the "Due tonight" card, when the label is long
  *   when      only applies on certain days, along with all of its subtasks.
+ *             On the nights it applies it is listed in the "Due tonight" card
+ *             at the top of the checklist and on the start screen.
  *             The day is the day the SHIFT
  *             STARTED, so {dow:2} means the Tuesday night going into
  *             Wednesday — not the night that ends on a Tuesday.
@@ -202,6 +205,7 @@ const TEMPLATE = [
       {
         id: 'cartexpiry',
         label: 'Code cart supply expiration dates checked',
+        short: 'Code cart expiration dates',
         note: 'The first Sunday night of the month.',
         when: { dow: 0, firstOfMonth: true },
         children: [

@@ -67,8 +67,15 @@ unit's own pickers stay restricted to the CCU list.
 menu path, what counts on the pull log, what to flag off the OR board.
 
 **Day-aware.** The narc count only counts toward your progress on a Tuesday
-night, and the I&O audit only on the first Tuesday night of the month. The rest
+night, the I&O audit only on the first Tuesday night of the month, and the code
+cart expiration check only on the first Sunday night. The rest
 of the time they sit there greyed out and labelled, rather than vanishing.
+
+On the nights one of these is due, a **Due tonight** card sits at the top of the
+checklist, and on the start screen before you begin, so you don't have to
+remember what night it is. Tap an item in the card to jump straight to it. Each
+one ticks itself off in the card as you finish it, and the card turns green
+once they're all done.
 
 A night shift spans two dates, so "Tuesday" means **the night that starts on
 Tuesday and runs into Wednesday** — the shift keeps its Tuesday label after

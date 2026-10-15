@@ -21,6 +21,7 @@ const I = {
   info: '<circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 10.6v6.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="7.4" r="1.15" fill="currentColor"/>',
   gear: '<path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 14.6a7.9 7.9 0 000-5.2l1.7-1.3-1.9-3.3-2 .8a7.9 7.9 0 00-4.5-2.6L12.4 1h-3.8l-.3 2a7.9 7.9 0 00-4.5 2.6l-2-.8L-.1 8.1l1.7 1.3a7.9 7.9 0 000 5.2L-.1 15.9l1.9 3.3 2-.8a7.9 7.9 0 004.5 2.6l.3 2h3.8l.3-2a7.9 7.9 0 004.5-2.6l2 .8 1.9-3.3z" fill="none" stroke="currentColor" stroke-width="1.6" transform="translate(1.5 1.2) scale(.9)"/>',
   clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 7.2V12l3.4 2.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
+  bell: '<path d="M6.2 16.4V11a5.8 5.8 0 0111.6 0v5.4l1.6 1.9H4.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 20.4a2.1 2.1 0 004 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   list: '<path d="M8 6h12M8 12h12M8 18h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>',
   print: '<path d="M7 9V3.8h10V9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><rect x="3.2" y="9" width="17.6" height="7.6" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 14h10v6.2H7z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>',
   copy: '<rect x="8.6" y="8.6" width="11.4" height="11.4" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M15.4 5.6a2.6 2.6 0 00-2.6-2.6H6.6A2.6 2.6 0 004 5.6v6.2a2.6 2.6 0 002.6 2.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>',
@@ -120,6 +121,46 @@ function appliesToday(node, sh) {
   return true;
 }
 
+/* Every task with a day rule that applies to this shift (or to today, before a
+ * shift is started), with how far along it is. Drives the "Due tonight" card. */
+function dueTonight(sh) {
+  const out = [];
+  const visit = (node, path) => {
+    if (node.when && appliesToday(node, sh)) {
+      const kids = (node.children || []).map((c) => path + '.' + c.id);
+      const kidsDone = sh ? kids.filter((k) => sh.checks[k]).length : 0;
+      out.push({
+        path,
+        label: node.short || node.label,
+        kids: kids.length,
+        kidsDone,
+        // ticking the task itself, or every one of its subtasks, both count
+        done: !!(sh && (sh.checks[path] || (kids.length && kidsDone === kids.length))),
+      });
+    }
+    (node.children || []).forEach((c) => visit(c, path + '.' + c.id));
+  };
+  TEMPLATE.forEach((sec) => (sec.items || []).forEach((it) => visit(it, sec.id + '.' + it.id)));
+  return out;
+}
+
+function dueCardHTML(sh) {
+  const due = dueTonight(sh);
+  if (!due.length) return '';
+  const allDone = due.every((d) => d.done);
+  return `<section class="group">
+    <div class="card due-card ${allDone ? 'all-done' : ''}">
+      <div class="due-head">${svg('bell')}<span>${allDone ? 'Tonight’s dated checks are done' : 'Due tonight'}</span></div>
+      ${due.map((d) => `<button class="due-item ${d.done ? 'done' : ''}" data-act="jump" data-path="${esc(d.path)}">
+          <span class="due-dot">${d.done ? svg('check') : ''}</span>
+          <span class="due-label">${esc(d.label)}</span>
+          ${d.kids && !d.done ? `<span class="pill">${d.kidsDone}/${d.kids}</span>` : ''}
+          ${svg('chev', 'chev')}
+        </button>`).join('')}
+    </div>
+  </section>`;
+}
+
 /* ───────────────────────── progress counting ───────────────────────── */
 
 /* Counts every checkbox the user can actually see, so the ring never promises
@@ -202,7 +243,7 @@ function render() {
     </div>
     <div class="track"><div class="fill" style="width:${prog.total ? (prog.done / prog.total) * 100 : 0}%"></div></div>`;
 
-  root.innerHTML = TEMPLATE.map((sec) => groupHTML(sec, sh)).join('');
+  root.innerHTML = dueCardHTML(sh) + TEMPLATE.map((sec) => groupHTML(sec, sh)).join('');
   renderTabs();
 }
 
@@ -475,7 +516,14 @@ function renderStart(root) {
   renderTabs();
 
   const needRooms = !S.settings.rooms.length;
-  root.innerHTML = `<section class="group">
+  const due = dueTonight(null);
+  root.innerHTML = `${due.length ? `<section class="group">
+      <div class="card due-card">
+        <div class="due-head">${svg('bell')}<span>Due tonight</span></div>
+        ${due.map((d) => `<div class="due-item static">
+            <span class="due-dot"></span><span class="due-label">${esc(d.label)}</span></div>`).join('')}
+      </div>
+    </section>` : ''}<section class="group">
       <div class="card" style="padding:20px 16px">
         <p style="margin:0 0 18px;font-size:15px;letter-spacing:-.24px;color:var(--label-2);line-height:1.45">
           Start a shift and the checklist resets with a clean slate. Every box you tick is
@@ -1023,6 +1071,22 @@ document.addEventListener('click', (ev) => {
       break;
     }
 
+    case 'jump': {
+      const secId = path.split('.')[0];
+      if (S.shift.open[secId] === false) {
+        S.shift.open[secId] = true;
+        save();
+        render();
+      }
+      const row = document.querySelector(`.row[data-path="${CSS.escape(path)}"]`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row.classList.remove('flash');
+        void row.offsetWidth;          // restart the animation on a second tap
+        row.classList.add('flash');
+      }
+      break;
+    }
     case 'rooms-open': openRoomPicker(path, el.dataset.any === 'true'); break;
     case 'other-add':
       if (addTypedRoom()) renderRoomPicker();

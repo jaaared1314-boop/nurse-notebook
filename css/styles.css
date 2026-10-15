@@ -528,3 +528,46 @@ select {
   #printout .o { color: #777; }
   @page { margin: 13mm 11mm; }
 }
+
+/* ───────── due tonight ───────── */
+
+.due-head {
+  display: flex; align-items: center; gap: 7px;
+  padding: 12px var(--gutter) 6px;
+  font-size: 13px; font-weight: 600; letter-spacing: -0.08px;
+  text-transform: uppercase; color: var(--orange);
+}
+.due-head svg { width: 17px; height: 17px; flex: none; }
+.due-card.all-done .due-head { color: var(--green); }
+
+.due-item {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left; position: relative;
+  padding: 0 var(--gutter); min-height: var(--tap);
+  font-size: 17px; letter-spacing: -0.41px;
+}
+.due-item::before {
+  content: ''; position: absolute; top: 0; left: calc(var(--gutter) + 34px); right: 0;
+  border-top: .5px solid var(--sep);
+}
+.due-head + .due-item::before { display: none; }
+.due-item:not(.static):active { background: var(--bg-field); }
+.due-item.static { min-height: 38px; }
+.due-item:last-child { margin-bottom: 4px; }
+.due-label { flex: 1; min-width: 0; }
+.due-item.done .due-label { color: var(--label-2); }
+.due-dot {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  border: 1.6px solid var(--orange);
+  display: grid; place-items: center;
+}
+.due-item.static .due-dot { width: 8px; height: 8px; margin: 0 7px; background: var(--orange); border: none; }
+.due-item.done .due-dot { background: var(--green); border-color: var(--green); }
+.due-dot svg { width: 13px; height: 13px; color: #fff; }
+
+/* the row you jumped to, so the eye lands on it */
+@keyframes flash {
+  0%, 35% { background: color-mix(in srgb, var(--blue) 24%, transparent); }
+  100% { background: transparent; }
+}
+.row.flash { animation: flash 1.8s ease-out; }
