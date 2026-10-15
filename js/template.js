@@ -22,7 +22,8 @@
  *               anywhere in the hospital, not just the unit's own list
  *   bare      the task exists only to host its repeat list — render the
  *             "+ Add" button without a checkbox row of its own
- *   when      only applies on certain days. The day is the day the SHIFT
+ *   when      only applies on certain days, along with all of its subtasks.
+ *             The day is the day the SHIFT
  *             STARTED, so {dow:2} means the Tuesday night going into
  *             Wednesday — not the night that ends on a Tuesday.
  *               {dow:2}       day of week (0=Sun … 2=Tue)
@@ -200,8 +201,13 @@ const TEMPLATE = [
       {
         id: 'cartexpiry',
         label: 'Code cart supply expiration dates checked',
-        note: 'The first Sunday night of the month — all three carts.',
+        note: 'The first Sunday night of the month.',
         when: { dow: 0, firstOfMonth: true },
+        children: [
+          { id: 'cart1', label: 'Code Cart 1' },
+          { id: 'cart2', label: 'Code Cart 2' },
+          { id: 'cart3', label: 'Code Cart 3' },
+        ],
         help: 'Work through each cart drawer by drawer. Anything expiring before the next first Sunday should come out now rather than next month, since nobody checks it again until then. Replace what you pull before the end of the shift so the cart is not left short.',
       },
       {

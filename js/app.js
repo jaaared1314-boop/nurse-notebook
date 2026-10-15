@@ -140,10 +140,9 @@ function countNode(node, path, sh, acc) {
     });
     return;
   }
-  if (due) {
-    acc.total++;
-    if (sh.checks[path]) acc.done++;
-  }
+  if (!due) return;          // its subtasks aren't due tonight either
+  acc.total++;
+  if (sh.checks[path]) acc.done++;
   (node.children || []).forEach((c) => countNode(c, path + '.' + c.id, sh, acc));
 }
 
@@ -297,7 +296,7 @@ function nodeHTML(node, path, sh, depth) {
 
   if (node.repeat) html += repeatHTML(node, path, sh);
   else if (node.children && node.children.length) {
-    html += `<div class="children">${node.children
+    html += `<div class="children"${due ? '' : ' style="opacity:.5"'}>${node.children
       .map((c) => nodeHTML(c, path + '.' + c.id, sh, depth + 1))
       .join('')}</div>`;
   }
