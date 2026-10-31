@@ -81,6 +81,14 @@ A night shift spans two dates, so "Tuesday" means **the night that starts on
 Tuesday and runs into Wednesday** — the shift keeps its Tuesday label after
 midnight, and a Monday night that happens to end on Tuesday does not count.
 
+**No CRRT tonight.** On a night with no CRRT patients, tick **No CRRT tonight** in
+Equipment & Supplies. The CRRT charge and supply checks then drop out of your count
+and the Due tonight card, and show as *Not tonight*. Untick it if a patient comes in.
+
+**Assignment at 0600.** Handoff & Staffing has **Assignment entered in the assignment
+wizard**, due around 0600 before dayshift. Type the assignment in the box as you enter
+it, so the report shows what went in.
+
 **Working short.** There is no secretary on nights, so that work sits in Forms &
 Logs as ordinary tasks. The chem stick, bath and restock list sits at the bottom
 under *If No Aide on the Floor* — tick it on the nights it applies and skip it

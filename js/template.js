@@ -24,6 +24,9 @@
  *   bare      the task exists only to host its repeat list or schedule —
  *             render that without a checkbox row of its own
  *   short     shorter name for the "Due tonight" card, when the label is long
+ *   skipIf    the path of a tick box. While that box is ticked (for example
+ *             "equipment.nocrrt"), this task and its subtasks are set aside:
+ *             not counted, not reported, not in the Due tonight card.
  *   when      only applies on certain days, along with all of its subtasks.
  *             On the nights it applies it is listed in the "Due tonight" card
  *             at the top of the checklist and on the start screen.
@@ -226,9 +229,15 @@ const TEMPLATE = [
       },
       { id: 'cerebell', label: 'Cerebell on the unit and docked' },
       {
+        id: 'nocrrt',
+        label: 'No CRRT tonight',
+        note: 'Tick this to set the CRRT checks aside.',
+      },
+      {
         id: 'crrt',
         label: 'Charge for new day of CRRT',
         note: 'At 0700.',
+        skipIf: 'equipment.nocrrt',
         at: '07:00',
         repeat: {
           addLabel: 'Add rooms',
@@ -239,6 +248,7 @@ const TEMPLATE = [
       {
         id: 'crrtsupply',
         label: 'Enough CRRT supplies for the next few shifts',
+        skipIf: 'equipment.nocrrt',
         help: 'If you are short, order now rather than at 0600 — this is the single most common thing dayshift inherits as a problem.',
       },
       { id: 'iphones', label: 'iPhones charging' },
@@ -273,6 +283,14 @@ const TEMPLATE = [
         id: 'teletracker',
         label: 'Nurse assignment entered into Tele Tracker',
         help: 'Clinical Operations → Patient Tracking Portal → Staff Assignment.',
+      },
+      {
+        id: 'assignment0600',
+        label: 'Assignment entered in the assignment wizard',
+        note: 'Around 0600, before dayshift.',
+        at: '06:00',
+        help: 'Clinical Operations → Patient Tracking Portal → Staff Assignment. Type the assignment here as you enter it, so the report shows exactly what went in.',
+        field: { type: 'longtext', placeholder: 'Who has which rooms' },
       },
       {
         id: 'scan',

@@ -154,6 +154,7 @@ function shiftDay(sh) {
 }
 
 function appliesToday(node, sh) {
+  if (node.skipIf && sh && sh.checks[node.skipIf]) return false;
   if (!node.when) return true;
   const d = shiftDay(sh);
   if (d.getDay() !== node.when.dow) return false;
@@ -207,6 +208,7 @@ function dueCardHTML(sh) {
  * progress on tasks that are hidden or not due tonight. */
 function countNode(node, path, sh, acc) {
   const due = appliesToday(node, sh);
+  if (!due) return;          // a set-aside task and its subtasks don't count
   if (node.repeat) {
     const list = sh.entries[path] || [];
     if (!node.bare) {
@@ -221,7 +223,6 @@ function countNode(node, path, sh, acc) {
     });
     return;
   }
-  if (!due) return;          // its subtasks aren't due tonight either
   if (!node.bare) {
     acc.total++;
     if (sh.checks[path]) acc.done++;
@@ -373,7 +374,7 @@ function badgeFor(node, path, sh) {
       ? `<span class="badge today">Due today</span>`
       : `<span class="badge">${esc(label)} only</span>`);
   }
-  if (node.at && !sh.checks[path]) {
+  if (node.at && !sh.checks[path] && appliesToday(node, sh)) {
     const target = nextOccurrence(node.at, sh);
     const mins = (target - Date.now()) / 60000;
     const label = node.at.replace(':', '');
@@ -391,6 +392,13 @@ function nodeHTML(node, path, sh, depth) {
 
   const checked = !!sh.checks[path];
   const due = appliesToday(node, sh);
+
+  // Set aside with its opt-out box: one quiet line, no body.
+  if (!due && node.skipIf) {
+    return `<div class="row" data-path="${esc(path)}"><div class="row-inner">
+      <span class="lbl" style="flex:1;opacity:.5">${esc(node.label)}</span>
+      <span class="badge plain">Not tonight</span></div></div>`;
+  }
 
   let html = `<div class="row ${checked ? 'done' : ''}" data-path="${esc(path)}">
     <div class="row-inner">
