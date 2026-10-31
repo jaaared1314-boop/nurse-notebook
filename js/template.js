@@ -197,7 +197,7 @@ const TEMPLATE = [
       },
       {
         id: 'cart3',
-        label: 'Code Cart 3',
+        label: 'Airway cart',
         children: [
           { id: 'locks', label: 'Locks / drawers checked', note: 'Do any need to be filled or re-locked?' },
           { id: 'zoll', label: 'Zoll check' },
@@ -214,7 +214,7 @@ const TEMPLATE = [
         children: [
           { id: 'cart1', label: 'Code Cart 1' },
           { id: 'cart2', label: 'Code Cart 2' },
-          { id: 'cart3', label: 'Code Cart 3' },
+          { id: 'cart3', label: 'Airway cart' },
         ],
         help: 'Work through each cart drawer by drawer. Anything expiring before the next first Sunday should come out now rather than next month, since nobody checks it again until then. Replace what you pull before the end of the shift so the cart is not left short.',
       },

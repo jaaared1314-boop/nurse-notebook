@@ -112,7 +112,7 @@ function pushSync() {
 /* Every timed check still open tonight, with its room from the template and
  * the room list. `key` identifies the check for the whole shift: it doesn't
  * change when the time does. */
-function timedChecks(sh) {
+function timedChecks(sh, opts = {}) {
   const out = [];
   const walk = (node, path, room) => {
     if (!appliesToday(node, sh)) return;
@@ -136,6 +136,13 @@ function timedChecks(sh) {
     if (!c.time || c.done) return;
     out.push({ key: 'custom.' + c.uid, dueAt: nextOccurrence(c.time, sh), room: c.room || '', label: c.label });
   });
+  // To-dos are free text and may name patients, so they stay off the reminder server.
+  if (opts.todos) {
+    sh.todos.forEach((t) => {
+      if (!t.time || t.done) return;
+      out.push({ key: 'todo.' + t.uid, dueAt: nextOccurrence(t.time, sh), room: t.room || '', label: t.text });
+    });
+  }
   return out;
 }
 
@@ -172,7 +179,7 @@ function icsFold(line) {
 function buildIcs(sh) {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Charge Nurse Checklist//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
-  timedChecks(sh).forEach((c) => {
+  timedChecks(sh, { todos: true }).forEach((c) => {
     const summary = c.room ? `${c.room}: ${c.label}` : c.label;
     const uid = (sh.id + '.' + c.key).replace(/[^A-Za-z0-9.-]/g, '-') + '@charge-checklist';
     const alarm = (trigger) => ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(summary), 'TRIGGER:' + trigger, 'END:VALARM'];
@@ -192,7 +199,7 @@ function buildIcs(sh) {
 }
 
 function exportCalendar(sh) {
-  const n = timedChecks(sh).length;
+  const n = timedChecks(sh, { todos: true }).length;
   if (!n) { toast('No open timed checks tonight'); return; }
   const url = URL.createObjectURL(new Blob([buildIcs(sh)], { type: 'text/calendar;charset=utf-8' }));
   const d = new Date(sh.start);
@@ -607,6 +614,7 @@ function todoHTML(sh) {
       <div class="row-main"><div class="row-title">
         <span class="lbl">${esc(t.text)}</span>
         ${t.room ? `<span class="badge today">${esc(t.room)}</span>` : ''}
+        ${t.time && !t.done ? `<span class="todo-due">${esc(t.time)}</span>` : ''}
         ${t.done && t.at ? `<span class="stamp">${hhmm(t.at)}</span>` : ''}
       </div></div>
       <button class="entry-del" data-act="todo-del" data-uid="${t.uid}" aria-label="Delete">${svg('trash')}</button>
@@ -616,7 +624,10 @@ function todoHTML(sh) {
   return `<div class="row"><div class="todo-add">
       <button class="plus" data-act="todo-add" aria-label="Add to-do">${svg('plus')}</button>
       <input type="text" id="todo-input" placeholder="Add a task…" enterkeyhint="done">
-    </div></div>
+    </div>
+    <label class="todo-time">Time <span>(optional, puts it on the Timeline)</span>
+      <input type="time" id="todo-time">
+    </label></div>
     ${rows || '<div class="empty">Nothing outstanding.</div>'}`;
 }
 
@@ -726,8 +737,11 @@ function addTodo() {
   const el = $('#todo-input');
   const text = el.value.trim();
   if (!text) return;
-  S.shift.todos.push({ uid: uid(), text, room: '', done: false, at: null });
+  const timeEl = $('#todo-time');
+  const time = (timeEl && timeEl.value) || null;
+  S.shift.todos.push({ uid: uid(), text, room: '', time, done: false, at: null });
   el.value = '';
+  if (timeEl) timeEl.value = '';
   save();
   render();
   setTimeout(() => { const i = $('#todo-input'); if (i) i.focus(); }, 0);
@@ -1016,7 +1030,7 @@ function walk(sh) {
 
     if (sec.kind === 'todo') {
       sh.todos.forEach((t) => lines.push({
-        done: t.done, at: t.at, label: t.text, kids: [],
+        done: t.done, at: t.at, label: t.text, value: t.time ? 'due ' + t.time : '', kids: [],
       }));
     } else {
       (sec.items || []).forEach((it) => {

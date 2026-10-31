@@ -102,6 +102,11 @@ function timelineItems(sh) {
         at: nextOccurrence(node.at, sh), room, label: node.label });
     }
   });
+  sh.todos.forEach((t) => {
+    if (!t.time) return;
+    items.push({ kind: 'todo', uid: t.uid, done: !!t.done, doneAt: t.at,
+      at: nextOccurrence(t.time, sh), room: t.room || '', label: t.text });
+  });
   customList(sh).forEach((c) => {
     if (!c.time) return;
     items.push({ kind: 'custom', uid: c.uid, done: !!c.done, doneAt: c.done,
@@ -189,6 +194,12 @@ function timelineToggle(el) {
   } else if (kind === 'custom') {
     const c = customList(sh).find((x) => x.uid === uid);
     if (c) c.done = c.done ? null : new Date().toISOString();
+  } else if (kind === 'todo') {
+    const t = sh.todos.find((x) => x.uid === uid);
+    if (t) {
+      t.done = !t.done;
+      t.at = t.done ? new Date().toISOString() : null;
+    }
   }
   haptic();
   save();

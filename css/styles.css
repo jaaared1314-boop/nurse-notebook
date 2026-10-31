@@ -720,3 +720,13 @@ header { background: color-mix(in srgb, var(--bg) 88%, transparent); }
 }
 .note-new span:first-child { font-size: 30px; line-height: 1; font-weight: 300; color: var(--label); }
 .notes-foot { font-size: 13px; color: var(--label-3); padding: 0 var(--gutter) 12px; line-height: 1.45; }
+
+/* to-do: optional time */
+.todo-time {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 0 var(--gutter) 10px calc(var(--gutter) + 35px);
+  font-size: 13px; color: var(--label-2);
+}
+.todo-time span { color: var(--label-3); }
+.todo-time input[type='time'] { width: auto; min-height: 36px; padding: 4px 10px; font-size: 15px; }
+.todo-due { font-size: 13px; color: var(--label-2); font-variant-numeric: tabular-nums; }
