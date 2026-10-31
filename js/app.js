@@ -24,6 +24,7 @@ const I = {
   gear: '<path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 14.6a7.9 7.9 0 000-5.2l1.7-1.3-1.9-3.3-2 .8a7.9 7.9 0 00-4.5-2.6L12.4 1h-3.8l-.3 2a7.9 7.9 0 00-4.5 2.6l-2-.8L-.1 8.1l1.7 1.3a7.9 7.9 0 000 5.2L-.1 15.9l1.9 3.3 2-.8a7.9 7.9 0 004.5 2.6l.3 2h3.8l.3-2a7.9 7.9 0 004.5-2.6l2 .8 1.9-3.3z" fill="none" stroke="currentColor" stroke-width="1.6" transform="translate(1.5 1.2) scale(.9)"/>',
   clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 7.2V12l3.4 2.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
   bell: '<path d="M6.2 16.4V11a5.8 5.8 0 0111.6 0v5.4l1.6 1.9H4.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 20.4a2.1 2.1 0 004 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  cal: '<rect x="4" y="5.5" width="16" height="14.5" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 10h16M8.5 3.5v3.5M15.5 3.5v3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   list: '<path d="M8 6h12M8 12h12M8 18h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>',
   print: '<path d="M7 9V3.8h10V9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><rect x="3.2" y="9" width="17.6" height="7.6" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 14h10v6.2H7z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>',
   copy: '<rect x="8.6" y="8.6" width="11.4" height="11.4" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M15.4 5.6a2.6 2.6 0 00-2.6-2.6H6.6A2.6 2.6 0 004 5.6v6.2a2.6 2.6 0 002.6 2.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>',
@@ -92,11 +93,11 @@ function pushSync() {
   }, 1500);
 }
 
-/* Timed checks still open tonight, for the reminder server. Each carries the
- * room name from Settings. Nothing else from the shift is sent. */
-function reminderItems(sh) {
+/* Every timed check still open tonight, with its room from the template and
+ * the room list. `key` identifies the check for the whole shift: it doesn't
+ * change when the time does. */
+function timedChecks(sh) {
   const out = [];
-  const cutoff = Date.now() - DUE_WINDOW_MIN * 60000;
   const walk = (node, path, room) => {
     if (!appliesToday(node, sh)) return;
     if (node.repeat) {
@@ -109,15 +110,81 @@ function reminderItems(sh) {
     if (node.field && node.field.type === 'schedule') {
       schedList(sh, path).forEach((it) => {
         if (!it.time || it.done) return;
-        const dueAt = nextOccurrence(it.time, sh);
-        if (dueAt.getTime() < cutoff) return;
-        out.push({ id: path + '/' + it.uid, dueAt: dueAt.toISOString(), room: room || '', label: node.label });
+        out.push({ key: path + '/' + it.uid, dueAt: nextOccurrence(it.time, sh), room: room || '', label: node.label });
       });
     }
     (node.children || []).forEach((c) => walk(c, path + '.' + c.id, room));
   };
   TEMPLATE.forEach((sec) => (sec.items || []).forEach((it) => walk(it, sec.id + '.' + it.id, '')));
   return out;
+}
+
+/* Timed checks for the reminder server. Only those not long past. Nothing else from the shift is sent. */
+function reminderItems(sh) {
+  const cutoff = Date.now() - DUE_WINDOW_MIN * 60000;
+  return timedChecks(sh)
+    .filter((c) => c.dueAt.getTime() >= cutoff)
+    .map((c) => ({ id: c.key, dueAt: c.dueAt.toISOString(), room: c.room, label: c.label }));
+}
+
+/* ───────────────────────── calendar export (.ics) ─────────────────────────
+ * One event per open timed check, titled "Room: Task", with alerts 15 minutes
+ * before and at the time. Times are floating (no time zone), so Calendar reads
+ * them as this phone's local time. UIDs come from the shift id and the check's
+ * key, so exporting the same shift again gives the same UIDs. */
+
+function icsText(v) {
+  return String(v).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+
+function icsLocal(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+}
+
+function icsFold(line) {
+  if (line.length <= 75) return line;
+  const parts = [line.slice(0, 75)];
+  for (let i = 75; i < line.length; i += 74) parts.push(' ' + line.slice(i, i + 74));
+  return parts.join('\r\n');
+}
+
+function buildIcs(sh) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Charge Nurse Checklist//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+  timedChecks(sh).forEach((c) => {
+    const summary = c.room ? `${c.room}: ${c.label}` : c.label;
+    const uid = (sh.id + '.' + c.key).replace(/[^A-Za-z0-9.-]/g, '-') + '@charge-checklist';
+    const alarm = (trigger) => ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(summary), 'TRIGGER:' + trigger, 'END:VALARM'];
+    lines.push('BEGIN:VEVENT',
+      'UID:' + uid,
+      'DTSTAMP:' + stamp,
+      'DTSTART:' + icsLocal(c.dueAt),
+      'DURATION:PT15M',
+      'SUMMARY:' + icsText(summary),
+      'DESCRIPTION:' + icsText('From Charge Nurse Checklist. Re-export after a change; see the README.'),
+      ...alarm('-PT15M'),
+      ...alarm('PT0S'),
+      'END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.map(icsFold).join('\r\n') + '\r\n';
+}
+
+function exportCalendar(sh) {
+  const n = timedChecks(sh).length;
+  if (!n) { toast('No open timed checks tonight'); return; }
+  const url = URL.createObjectURL(new Blob([buildIcs(sh)], { type: 'text/calendar;charset=utf-8' }));
+  const d = new Date(sh.start);
+  const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `charge-checks-${day}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast(n === 1 ? '1 check ready to add' : `${n} checks ready to add`);
 }
 
 /* ───────────────────────────── helpers ───────────────────────────── */
@@ -803,6 +870,7 @@ function openSettings() {
 
       ${S.shift ? `<div class="group-header" style="padding-top:22px"><span class="gh-title">This shift</span></div>
         <button class="btn" data-act="copy-report">${svg('copy')} Copy report as text</button>
+        <button class="btn" data-act="cal-export">${svg('cal')} Add timed checks to Calendar</button>
         <button class="btn" data-act="print">${svg('print')} Print / Save as PDF</button>
         <button class="btn destructive" data-act="shift-end">${svg('stop')} End shift and save to history</button>` : ''}
 
@@ -1269,6 +1337,9 @@ document.addEventListener('click', async (ev) => {
       break;
     }
 
+    case 'cal-export':
+      if (S.shift) exportCalendar(S.shift);
+      break;
     case 'push-toggle': {
       el.disabled = true;
       try {

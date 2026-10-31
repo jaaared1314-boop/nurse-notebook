@@ -103,6 +103,28 @@ clears the live checklist.
 **History** keeps past shifts on the phone. Open one to read, copy, print, or
 delete it.
 
+## Add timed checks to Calendar
+
+On the **This shift** part of Settings, tap **Add timed checks to Calendar**. It downloads
+a `.ics` file with one event per open timed check, titled *Room: Task* (for example
+*CCU 17: Chem stick*). Each event alerts 15 minutes before and at the time, and Calendar
+shows those alerts even with the phone locked. No server is involved.
+
+Opening the file adds the events to your Calendar app. When you export again for the
+same shift, each check keeps the same ID, so Calendar should update the existing event
+rather than add a copy. Changing a time moves the event. Adding a task adds a new event.
+
+Calendar can't be told by the app to remove events, so a few things need a hand:
+
+- A check that's ticked off stays in Calendar. Delete it there.
+- A check that's removed from the shift stays in Calendar. Delete it there.
+- Events from a previous shift stay until you delete them. Search Calendar for a
+  room name to find them.
+
+How Calendar treats a repeat import on your phone is the one thing this app can't
+test. Try it once: export, change a time, export again, and check whether you have one
+event or two.
+
 ## Reminders (optional)
 
 If you host the small reminder server in `server/`, the app can alert you 15 minutes
