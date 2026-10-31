@@ -1435,5 +1435,18 @@ render();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () =>
-    navigator.serviceWorker.register('sw.js').catch(() => {}));
+    navigator.serviceWorker.register('sw.js')
+      .then((reg) => reg.update())     // check for a new version on every open
+      .catch(() => {}));
+
+  // When a new version takes over, reload once so the page runs the new files.
+  // A first install also triggers this; the reload is harmless then. Saves are
+  // flushed first so nothing typed in the last moment is lost.
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (_) { /* best effort */ }
+    window.location.reload();
+  });
 }

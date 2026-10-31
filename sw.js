@@ -1,7 +1,7 @@
 /* Offline shell. Bump CACHE whenever a file below changes so phones that
  * already installed the app pick up the new version on their next launch. */
 
-const CACHE = 'cnc-v16';
+const CACHE = 'cnc-v17';
 const ASSETS = [
   './',
   './index.html',
@@ -19,7 +19,10 @@ const ASSETS = [
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    // 'reload' skips the browser's own web cache, so the saved copy is the deployed one
+    caches.open(CACHE)
+      .then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -31,35 +34,37 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+/* Network first for everything the app ships, so a deployed update shows up on
+ * the next open instead of waiting for the phone to drop its saved copy. The
+ * saved copy is the fallback when the phone is offline, or on hospital wifi
+ * that connects but never answers (the 4-second timeout). */
+const NET_TIMEOUT_MS = 4000;
+
+function fromNetwork(req) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), NET_TIMEOUT_MS);
+    // 'no-cache' asks the server whether the file changed (a cheap check), instead
+    // of trusting the browser's web cache, which GitHub lets keep files for 10 minutes.
+    fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+      .then((res) => { clearTimeout(timer); resolve(res); }, (err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-
-  // Navigations: try the network so a deployed update lands promptly, but fall
-  // back to the cached shell the moment the phone is offline or on hospital wifi
-  // that resolves but never answers.
-  if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('./index.html', copy));
-          return res;
-        })
-        .catch(() => caches.match('./index.html'))
-    );
-    return;
-  }
+  const key = req.mode === 'navigate' ? './index.html' : req;
 
   e.respondWith(
-    caches.match(req).then((hit) =>
-      hit ||
-      fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
+    fromNetwork(req)
+      .then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(key, copy));
+        }
         return res;
       })
-    )
+      .catch(() => caches.match(key, { ignoreSearch: true }).then((hit) => hit || Response.error()))
   );
 });
 
