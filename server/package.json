@@ -1,0 +1,15 @@
+{
+  "name": "charge-reminders",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web Push reminders for the Charge Nurse Checklist. Holds one push subscription and tonight's timed checks per device.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test test/server.test.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

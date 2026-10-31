@@ -95,11 +95,19 @@ clears the live checklist.
 **History** keeps past shifts on the phone. Open one to read, copy, print, or
 delete it.
 
+## Reminders (optional)
+
+If you host the small reminder server in `server/`, the app can alert you 15 minutes
+before each timed check and again when it is due, even with the phone locked. Turn it
+on under Settings, then Timed checks. This needs a server, which is the one exception
+to the offline design, so read `server/README.md` first. The server stores each phone's
+check times and room names, and removes them about two hours after they are due.
+
+Without a server, the app works fully offline and sends nothing.
+
 ## Privacy
 
-Everything lives in this phone's local storage. There is no account, no server,
-no analytics, and no network call of any kind after the page loads. Nothing you
-type is visible to anyone else, including me.
+Everything lives in this phone's local storage. There is no account and no analytics. The app makes no network calls at all, unless you turn on timed-check reminders, in which case only the reminder details described above go to your reminder server.
 
 That also means there is **no backup**. Deleting the app from the home screen, or
 clearing Safari's website data, erases every shift permanently. If a shift matters,
@@ -125,7 +133,10 @@ change up.
 | `js/template.js` | The checklist itself — edit this to change tasks |
 | `js/app.js` | State, rendering, timestamps, report, history |
 | `css/styles.css` | Styling, iOS design language, print layout |
-| `sw.js` | Offline cache |
+| `sw.js` | Offline cache and reminder notifications |
+| `js/push.js` | Reminder switch and sync (off unless configured) |
+| `js/config.js` | Reminder server address (empty by default) |
+| `server/` | Optional reminder server and its tests |
 | `manifest.webmanifest` | Home-screen install metadata |
 
 No build step, no dependencies, no framework.

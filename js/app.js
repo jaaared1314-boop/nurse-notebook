@@ -1,11 +1,13 @@
 /* Charge Nurse Checklist — all app logic.
  *
- * Everything lives in this device's localStorage. No network calls, no
- * accounts, no analytics. Nothing typed into this app leaves the phone. */
+ * Everything lives in this device's localStorage. No accounts, no analytics.
+ * The only network call is the optional reminder server (js/push.js); with
+ * reminders off, nothing typed into this app leaves the phone. */
 
 'use strict';
 
 const STORE = 'cnc.v2';
+const DUE_WINDOW_MIN = 30;
 const SHIFT_TYPE = 'night';           // 19:00–07:00
 
 /* The unit's rooms, ready on first launch. Editable in Settings. */
@@ -78,6 +80,44 @@ function save() {
       toast('Storage full — export and clear old shifts');
     }
   }, 120);
+  pushSync();
+}
+
+/* Reminders are re-sent after edits settle, so typing a time doesn't send a request per keystroke. */
+let pushTimer = null;
+function pushSync() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    syncReminders(S.shift ? reminderItems(S.shift) : []);
+  }, 1500);
+}
+
+/* Timed checks still open tonight, for the reminder server. Each carries the
+ * room name from Settings. Nothing else from the shift is sent. */
+function reminderItems(sh) {
+  const out = [];
+  const cutoff = Date.now() - DUE_WINDOW_MIN * 60000;
+  const walk = (node, path, room) => {
+    if (!appliesToday(node, sh)) return;
+    if (node.repeat) {
+      (sh.entries[path] || []).forEach((e) => {
+        (node.repeat.children || []).forEach((c) =>
+          walk(c, path + '#' + e.uid + '.' + c.id, e.name));
+      });
+      return;
+    }
+    if (node.field && node.field.type === 'schedule') {
+      schedList(sh, path).forEach((it) => {
+        if (!it.time || it.done) return;
+        const dueAt = nextOccurrence(it.time, sh);
+        if (dueAt.getTime() < cutoff) return;
+        out.push({ id: path + '/' + it.uid, dueAt: dueAt.toISOString(), room: room || '', label: node.label });
+      });
+    }
+    (node.children || []).forEach((c) => walk(c, path + '.' + c.id, room));
+  };
+  TEMPLATE.forEach((sec) => (sec.items || []).forEach((it) => walk(it, sec.id + '.' + it.id, '')));
+  return out;
 }
 
 /* ───────────────────────────── helpers ───────────────────────────── */
@@ -758,6 +798,18 @@ function openSettings() {
         <button class="btn" data-act="print">${svg('print')} Print / Save as PDF</button>
         <button class="btn destructive" data-act="shift-end">${svg('stop')} End shift and save to history</button>` : ''}
 
+      <div class="group-header" style="padding-top:22px"><span class="gh-title">Reminders</span></div>
+      <div class="card">
+        <div class="toggle">
+          <div class="toggle-text">Timed checks
+            <small>${pushAvailable()
+              ? 'A notification 15 minutes before each timed check and again when it is due, even with the phone locked. Needs the app on your Home Screen. Room numbers are sent to your reminder server.'
+              : 'Not set up yet. Host the reminder server and add its address to js/config.js (see the README).'}</small></div>
+          <button class="switch" role="switch" aria-checked="${pushOn()}" data-act="push-toggle"
+            ${pushAvailable() ? '' : 'disabled'} aria-label="Timed check reminders"></button>
+        </div>
+      </div>
+
       <div class="group-header" style="padding-top:22px"><span class="gh-title">Data</span></div>
       <div class="group-footer" style="padding-bottom:12px">Everything is stored on this iPhone only.
         Nothing is uploaded, and no one else can see it. Deleting Safari's website data for this
@@ -1046,7 +1098,7 @@ function applyTheme() {
 
 /* ───────────────────────────── event wiring ───────────────────────────── */
 
-document.addEventListener('click', (ev) => {
+document.addEventListener('click', async (ev) => {
   const el = ev.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act;
@@ -1209,6 +1261,25 @@ document.addEventListener('click', (ev) => {
       break;
     }
 
+    case 'push-toggle': {
+      el.disabled = true;
+      try {
+        if (pushOn()) {
+          await disablePush();
+          toast('Reminders off');
+        } else if (await enablePush()) {
+          if (S.shift) syncReminders(reminderItems(S.shift));
+          toast('Reminders on');
+        } else {
+          toast('Notifications are not allowed for this app');
+        }
+      } catch (e) {
+        toast('Could not reach the reminder server');
+      }
+      el.disabled = false;
+      el.setAttribute('aria-checked', String(pushOn()));
+      break;
+    }
     case 'wipe':
       if (confirm('Erase every shift, past and present, plus your room list? This cannot be undone.')) {
         localStorage.removeItem(STORE);
