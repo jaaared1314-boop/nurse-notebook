@@ -31,6 +31,21 @@ launch. Your rooms, your current shift, and your history are untouched.
 
 ## How it works
 
+**Four screens, one tab bar at the bottom:**
+
+- **Timeline:** the night as hours, from the first check to the last. A *now* line
+  marks where you are, and quiet hours collapse to one line. Timed checks are here,
+  with a countdown in the last 20 minutes and *overdue* once they pass. Tasks with no
+  time sit under *Untimed*.
+- **Rooms:** one card per patient room, with that room's tasks and times, and an
+  **Add task** button. Add a task with a time, or choose *No time* for an untimed one.
+  Tap **Add a room** for rooms not on any list yet.
+- **Everything else:** the full checklist, section by section, as it was before.
+- **Notes:** sticky-note squares for anything you want to jot down. Notes aren't part
+  of the checklist or the report.
+
+Settings, the shift report and past shifts are in the header.
+
 **Start a shift** from the home screen. The checklist resets clean, and a clock
 starts. Everything you type is saved to the phone as you go, so you can close the
 app mid-shift, get pulled into a code, and come back to exactly where you were.
@@ -72,14 +87,19 @@ cart expiration check only on the first Sunday night. The rest
 of the time they sit there greyed out and labelled, rather than vanishing.
 
 On the nights one of these is due, a **Due tonight** card sits at the top of the
-checklist, and on the start screen before you begin, so you don't have to
-remember what night it is. Tap an item in the card to jump straight to it. Each
+Timeline, and on the start screen before you begin, so you don't have to
+remember what night it is. Tap an item in the card to jump straight to it in
+Everything else. Each
 one ticks itself off in the card as you finish it, and the card turns green
 once they're all done.
 
 A night shift spans two dates, so "Tuesday" means **the night that starts on
 Tuesday and runs into Wednesday** — the shift keeps its Tuesday label after
 midnight, and a Monday night that happens to end on Tuesday does not count.
+
+**Possible admissions.** Under *OR board checked for the next day*, use **Add possible
+admission** to list the OR cases that may come up (for example, a heart, a TCAR or a
+fem/pop). Each one is kept in the report.
 
 **No CRRT tonight.** On a night with no CRRT patients, tick **No CRRT tonight** in
 Equipment & Supplies. The CRRT charge and supply checks then drop out of your count

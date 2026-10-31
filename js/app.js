@@ -24,6 +24,8 @@ const I = {
   gear: '<path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 14.6a7.9 7.9 0 000-5.2l1.7-1.3-1.9-3.3-2 .8a7.9 7.9 0 00-4.5-2.6L12.4 1h-3.8l-.3 2a7.9 7.9 0 00-4.5 2.6l-2-.8L-.1 8.1l1.7 1.3a7.9 7.9 0 000 5.2L-.1 15.9l1.9 3.3 2-.8a7.9 7.9 0 004.5 2.6l.3 2h3.8l.3-2a7.9 7.9 0 004.5-2.6l2 .8 1.9-3.3z" fill="none" stroke="currentColor" stroke-width="1.6" transform="translate(1.5 1.2) scale(.9)"/>',
   clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 7.2V12l3.4 2.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
   bell: '<path d="M6.2 16.4V11a5.8 5.8 0 0111.6 0v5.4l1.6 1.9H4.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 20.4a2.1 2.1 0 004 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  note: '<path d="M5 4h14v11l-5 5H5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 20v-5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
   cal: '<rect x="4" y="5.5" width="16" height="14.5" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 10h16M8.5 3.5v3.5M15.5 3.5v3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   list: '<path d="M8 6h12M8 12h12M8 18h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>',
   print: '<path d="M7 9V3.8h10V9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><rect x="3.2" y="9" width="17.6" height="7.6" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 14h10v6.2H7z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>',
@@ -47,7 +49,21 @@ const blankShift = () => ({
   entries: {},  // item path -> [{uid, name}]
   todos: [],    // {uid, text, room, done, at}
   open: {},     // section id -> bool
+  custom: [],   // tasks added in a room or untimed: {uid, room, label, time|null, done}
+  roomList: [], // rooms added by hand, not through a checklist picker
+  notes: [],    // sticky notes: {uid, text, color, at}
 });
+
+/* Shifts saved before these fields existed get them on first open. */
+function ensureShiftFields(sh) {
+  sh.custom = sh.custom || [];
+  sh.roomList = sh.roomList || [];
+  sh.notes = sh.notes || [];
+  sh.open = sh.open || {};
+  return sh;
+}
+
+const customList = (sh) => sh.custom || [];
 
 const defaults = () => ({
   v: 2,
@@ -116,6 +132,10 @@ function timedChecks(sh) {
     (node.children || []).forEach((c) => walk(c, path + '.' + c.id, room));
   };
   TEMPLATE.forEach((sec) => (sec.items || []).forEach((it) => walk(it, sec.id + '.' + it.id, '')));
+  customList(sh).forEach((c) => {
+    if (!c.time || c.done) return;
+    out.push({ key: 'custom.' + c.uid, dueAt: nextOccurrence(c.time, sh), room: c.room || '', label: c.label });
+  });
   return out;
 }
 
@@ -323,6 +343,10 @@ function overallProgress(sh) {
     acc.done += p.done;
     acc.total += p.total;
   });
+  customList(sh).forEach((c) => {
+    acc.total++;
+    if (c.done) acc.done++;
+  });
   return acc;
 }
 
@@ -334,37 +358,9 @@ function render() {
     renderStart(root);
     return;
   }
-  const sh = S.shift;
-  const prog = overallProgress(sh);
-
-  $('#hdr').innerHTML = `
-    <div class="navbar">
-      <span class="icon-btn"></span>
-      <div class="nav-title">${esc(S.settings.unit || 'Charge Nurse')}
-        <small>${dayStamp(sh.start)} · on since ${hhmm(sh.start)} · ${elapsed(sh.start)}</small>
-      </div>
-      <button class="icon-btn" data-act="collapse-all" aria-label="Collapse or expand all sections">
-        ${svg('list')}</button>
-    </div>
-    <div class="large-title">Tonight
-      <small>${prog.done} of ${prog.total} done${prog.total && prog.done === prog.total ? ' · all clear' : ''}</small>
-    </div>
-    <div class="track"><div class="fill" style="width:${prog.total ? (prog.done / prog.total) * 100 : 0}%"></div></div>`;
-
-  root.innerHTML = dueCardHTML(sh) + TEMPLATE.map((sec) => groupHTML(sec, sh)).join('');
-  renderTabs();
+  renderShift(S.shift);
 }
 
-function renderTabs() {
-  $('#tabs').innerHTML = [
-    ['top', 'list', 'Checklist'],
-    ['report', 'print', 'Report'],
-    ['history', 'clock', 'History'],
-    ['settings', 'gear', 'Settings'],
-  ].map(([act, ic, label]) =>
-    `<button data-act="${act}" aria-current="${act === 'top' && $('#scrim').hidden}">
-       ${svg(ic)}<span>${label}</span></button>`).join('');
-}
 
 function elapsed(start) {
   const m = Math.max(0, Math.round((Date.now() - new Date(start)) / 60000));
@@ -626,7 +622,11 @@ function todoHTML(sh) {
 
 function renderStart(root) {
   $('#hdr').innerHTML = `
-    <div class="navbar"><div class="nav-title">${esc(S.settings.unit || 'Charge Nurse')}</div></div>
+    <div class="navbar">
+      <button class="icon-btn" data-act="history" aria-label="Past shifts">${svg('clock')}</button>
+      <div class="nav-title">${esc(S.settings.unit || 'Charge Nurse')}</div>
+      <button class="icon-btn" data-act="settings" aria-label="Settings">${svg('gear')}</button>
+    </div>
     <div class="large-title">Charge Nurse<small>${dayStamp(new Date())} · nights</small></div>`;
   renderTabs();
 
@@ -858,14 +858,6 @@ function openSettings() {
         : `<div class="group-footer">No rooms yet. Type a range like <b>3401-3420</b> or a
              comma-separated list and tap Add.</div>`}
 
-      <div class="group-header" style="padding-top:22px"><span class="gh-title">Appearance</span></div>
-      <div class="card">
-        <div class="toggle">
-          <div class="toggle-text">Always dark
-            <small>Off follows your iPhone's own light/dark setting.</small></div>
-          <button class="switch" role="switch" aria-checked="${S.settings.theme === 'dark'}"
-            data-act="theme"></button>
-        </div>
       </div>
 
       ${S.shift ? `<div class="group-header" style="padding-top:22px"><span class="gh-title">This shift</span></div>
@@ -1034,6 +1026,17 @@ function walk(sh) {
     }
     if (lines.length) out.push({ title: sec.title, lines });
   });
+  const added = customList(sh);
+  if (added.length) {
+    out.push({
+      title: 'Added tonight',
+      lines: added.map((c) => ({
+        done: !!c.done, at: c.done || null,
+        label: (c.room ? c.room + ': ' : '') + c.label,
+        value: c.time || 'no time', kids: [],
+      })),
+    });
+  }
   return out;
 }
 
@@ -1179,6 +1182,7 @@ document.addEventListener('click', async (ev) => {
   if (!el) return;
   const act = el.dataset.act;
   const path = el.dataset.path;
+  if (viewAction(act, el)) return;   // Timeline, Rooms, Everything else and Notes (views.js)
 
   switch (act) {
     case 'check': toggleCheck(path); break;
@@ -1201,11 +1205,11 @@ document.addEventListener('click', async (ev) => {
 
     case 'jump': {
       const secId = path.split('.')[0];
-      if (S.shift.open[secId] === false) {
-        S.shift.open[secId] = true;
-        save();
-        render();
-      }
+      S.tab = 'everything';
+      focusSection = secId;
+      S.shift.open[secId] = true;
+      save();
+      render();
       const row = document.querySelector(`.row[data-path="${CSS.escape(path)}"]`);
       if (row) {
         row.scrollIntoView({ behavior: 'smooth', block: 'center' });

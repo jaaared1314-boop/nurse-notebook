@@ -277,6 +277,7 @@ const TEMPLATE = [
         id: 'orboard',
         label: 'OR board checked for the next day',
         help: 'Determines the bed holds dayshift needs for OR patients — hearts, TCARs, fem/pops. Flag these to the oncoming charge even if the hold is not placed yet.',
+        field: { type: 'textlist', placeholder: 'Case, e.g. heart, TCAR, fem/pop', addLabel: 'Add possible admission' },
       },
       { id: 'rounding', label: 'Rounding sheet updated', note: 'Keep it current through the shift, not at the end.' },
       {
