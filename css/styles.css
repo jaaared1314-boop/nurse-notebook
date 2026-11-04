@@ -851,7 +851,20 @@ select { background-image: none; padding-right: 0; }
 }
 
 /* layout that the monochrome section had replaced: rows and cards laid out in a line */
-header.top { position: static; background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* the top bar stays put while the content scrolls under it */
+header.top {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--sep);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.topbar { min-height: 0; }
+@media (max-width: 640px) {
+  .topbar { gap: 8px 18px; padding-top: 10px; padding-bottom: 10px; }
+  .pagelinks, .tools { gap: 4px 16px; }
+  .pagelinks button, .tools button { padding: 4px 0; font-size: 10.5px; }
+}
 .room-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; }
 .room-head .chev { align-self: center; margin-left: auto; }
 .room-task { display: flex; align-items: center; gap: 12px; }
@@ -877,3 +890,5 @@ main.wrap { padding-top: 64px; }
 /* a checklist item's own time, set by hand */
 .item-time { min-height: 32px; padding: 4px 8px; margin-left: 8px; background: none; border: 0; border-bottom: 1px solid var(--label); color: var(--label); font: 500 13px/1.2 var(--font); font-variant-numeric: tabular-nums; }
 .item-time:focus { outline: 2px solid var(--label); outline-offset: 2px; }
+/* empty time boxes recede, so only the times that are set stand out */
+.item-time[value=""] { color: var(--label-3); border-bottom-color: var(--sep); }
