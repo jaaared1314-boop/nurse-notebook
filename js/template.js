@@ -278,7 +278,6 @@ const TEMPLATE = [
     id: 'handoff',
     title: 'Handoff & Staffing',
     items: [
-      { id: 'primary', label: 'Primary nurse contact identified' },
       {
         id: 'orboard',
         label: 'OR board checked for the next day',
@@ -286,11 +285,6 @@ const TEMPLATE = [
         field: { type: 'textlist', placeholder: 'Case, e.g. heart, TCAR, fem/pop', addLabel: 'Add possible admission' },
       },
       { id: 'rounding', label: 'Rounding sheet updated', note: 'Keep it current through the shift, not at the end.' },
-      {
-        id: 'teletracker',
-        label: 'Nurse assignment entered into Tele Tracker',
-        help: 'Clinical Operations → Patient Tracking Portal → Staff Assignment.',
-      },
       {
         id: 'assignment0600',
         label: 'Assignment entered in the assignment wizard',
