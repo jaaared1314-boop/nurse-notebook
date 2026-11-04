@@ -83,7 +83,7 @@ function renderShift(sh) {
 
 function walkTree(sh, fn) {
   const visit = (node, path, room) => {
-    if (!appliesToday(node, sh)) return;
+    if (!appliesToday(node, sh, path)) return;
     if (node.repeat) {
       const isRoom = !!(node.repeat.field && node.repeat.field.type === 'room');
       fn(node, path, room, true);
@@ -158,18 +158,28 @@ function timelineHTML(sh) {
   const hourLabel = (idx) => pad2((base.getHours() + idx) % 24);
 
   // Build one flat run of rows: timed items, gaps for quiet hours, and the "now" line.
-  const tokens = [];
-  let lastIdx = null;
+  // "Now" takes up its own hour, so quiet hours are split around it instead of
+  // one gap that runs past the present.
+  const seq = [];
   let nowPlaced = false;
   items.forEach((it) => {
-    const idx = hourIndex(it.at);
-    if (lastIdx === null && idx > 0) tokens.push({ t: 'gap', from: 0, to: idx - 1 });
-    if (lastIdx !== null && idx - lastIdx > 1) tokens.push({ t: 'gap', from: lastIdx + 1, to: idx - 1 });
-    if (!nowPlaced && it.at.getTime() >= now) { tokens.push({ t: 'now' }); nowPlaced = true; }
-    tokens.push({ t: 'item', it, idx, first: idx !== lastIdx });
-    lastIdx = idx;
+    if (!nowPlaced && it.at.getTime() >= now) { seq.push({ t: 'now', idx: hourIndex(now) }); nowPlaced = true; }
+    seq.push({ t: 'item', it, idx: hourIndex(it.at) });
   });
-  if (!nowPlaced) tokens.push({ t: 'now' });
+  if (!nowPlaced) seq.push({ t: 'now', idx: hourIndex(now) });
+
+  const tokens = [];
+  let lastIdx = -1;        // last hour shown (items or now)
+  let lastItemIdx = null;  // last hour that printed its label
+  seq.forEach((s) => {
+    if (s.idx > lastIdx + 1) tokens.push({ t: 'gap', from: lastIdx + 1, to: s.idx - 1 });
+    if (s.t === 'now') tokens.push({ t: 'now' });
+    else {
+      tokens.push({ t: 'item', it: s.it, idx: s.idx, first: s.idx !== lastItemIdx });
+      lastItemIdx = s.idx;
+    }
+    lastIdx = Math.max(lastIdx, s.idx);
+  });
 
   const rows = tokens.map((tok) => {
     if (tok.t === 'now') {
@@ -457,6 +467,7 @@ function viewAction(act, el) {
       focusSection = null;
       save();
       render();
+      toContent();
       return true;
     case 'tl-toggle':
       timelineToggle(el);
@@ -515,11 +526,13 @@ function viewAction(act, el) {
       sh.open[focusSection] = true;
       save();
       render();
+      toContent();
       return true;
     case 'sec-back':
       focusSection = null;
       save();
       render();
+      toContent();
       return true;
     case 'note-new': {
       const note = { uid: uid(), text: '', color: NOTE_COLORS[sh.notes.length % NOTE_COLORS.length], at: new Date().toISOString() };

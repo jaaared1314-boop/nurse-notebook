@@ -71,6 +71,7 @@ const TEMPLATE = [
               id: 'hospice',
               label: 'Hospice — extra sticker placed first',
               note: 'If hospice, add one sticker first when flipping the chart.',
+              onlyIf: { sibling: 'status', in: ['Hospice'] },
             },
           ],
         },

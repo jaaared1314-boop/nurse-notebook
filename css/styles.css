@@ -892,3 +892,72 @@ main.wrap { padding-top: 64px; }
 .item-time:focus { outline: 2px solid var(--label); outline-offset: 2px; }
 /* empty time boxes recede, so only the times that are set stand out */
 .item-time[value=""] { color: var(--label-3); border-bottom-color: var(--sep); }
+
+/* ── tidy-up pass: tighter on the phone, quieter rows, sheets with gutters ── */
+
+/* a checklist item's time: a small clock until one is set */
+.tpick { position: relative; display: inline-flex; align-items: center; margin-left: 8px; vertical-align: middle; }
+.tpick .item-time { margin-left: 0; }
+.tpick:not(.set) { width: 32px; height: 32px; justify-content: center; color: var(--label-3); }
+.tpick:not(.set) svg { width: 16px; height: 16px; pointer-events: none; }
+.tpick:not(.set) .item-time { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; border: 0; }
+.tpick:not(.set):hover, .tpick:not(.set):focus-within { color: var(--label); }
+.tpick:not(.set):focus-within { outline: 2px solid var(--label); outline-offset: 0; }
+.tpick:not(.set) .item-time:focus { outline: 0; }
+
+/* sheets: buttons and notes sit inside the same 16px gutter as the page */
+.sheet .btn { width: calc(100% - var(--gutter) * 2); margin: 0 var(--gutter) 10px; }
+.sheet .group-footer { padding: 6px var(--gutter) 0; }
+.sheet .report { margin-left: var(--gutter); margin-right: var(--gutter); }
+.sheet-nav { padding: 6px var(--gutter); border-bottom: 1px solid var(--sep); margin-bottom: 18px; }
+.sheet-nav .txt-btn { font: 600 11px/1.2 var(--font); letter-spacing: .2em; text-transform: uppercase; color: var(--label); min-width: 64px; }
+@media (min-width: 700px) { .sheet { max-width: 720px; margin: 0 auto; border-left: 1px solid var(--label); border-right: 1px solid var(--label); } }
+
+/* report: what's still open, one line per section, tap to go there */
+.open-list { margin: 0 var(--gutter) 18px; }
+.open-list .caps { color: var(--label-3); padding-bottom: 8px; }
+.open-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0;
+  background: none; border: 0; border-top: 1px solid var(--sep); color: var(--label);
+  font: 500 15px/1.3 var(--font); text-align: left;
+}
+.open-row span:first-child { flex: 1; }
+.open-n { font: 600 11px/1.2 var(--font); letter-spacing: .2em; text-transform: uppercase; color: var(--label-3); }
+.open-row .chev { width: 14px; height: 14px; }
+
+/* the page's top sits just under the sticky header when you jump to it */
+#app { scroll-margin-top: 120px; }
+
+@media (max-width: 640px) {
+  /* top bar: the mark and tools on one line, the four pages on the next */
+  .topbar { flex-wrap: wrap; gap: 6px 16px; }
+  .mark { order: 0; font-size: 20px; }
+  .mark span { display: none; }
+  .tools { order: 1; margin-left: auto; flex-wrap: nowrap; gap: 14px; }
+  .pagelinks { order: 2; flex: 0 0 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 18px; }
+  .pagelinks::-webkit-scrollbar { display: none; }
+  .pagelinks button { white-space: nowrap; flex: none; }
+  .pagelinks:empty { display: none; }
+
+  /* summary band: one figure and three small stats in a row, not a full screen */
+  .hero .wrap { padding-top: 22px; padding-bottom: 22px; }
+  .hero .big { font-size: 48px; margin: 8px 0 0; }
+  .hero .lede { display: none; }          /* repeats "Next due" just below */
+  .hero .stats { grid-template-columns: 1.4fr 1fr 1fr; margin-top: 18px; }
+  .hero .stat, .hero .stat + .stat { padding: 12px 10px 0 0; border-bottom: 0; }
+  .hero .stat + .stat { padding-left: 10px; border-left: 1px solid var(--band-rule); }
+  .hero .stat:last-child { padding-bottom: 0; }
+  .hero .stat .k { font-size: 9.5px; letter-spacing: .16em; }
+  .hero .stat .v { font-size: 22px; }
+  .hero .stat .s { font-size: 11.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .hero .track { margin-top: 18px; }
+  main.wrap { padding-top: 32px; }
+}
+
+/* every "add" button reads the same: small caps, underlined, no fill */
+.chip-add {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 0 4px;
+  background: none; border: 0; border-bottom: 1px solid var(--label); color: var(--label);
+  font: 600 11px/1.2 var(--font); letter-spacing: .2em; text-transform: uppercase;
+}
+.chip-add svg { width: 12px; height: 12px; }

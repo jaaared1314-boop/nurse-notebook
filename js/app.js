@@ -116,7 +116,7 @@ function pushSync() {
 function timedChecks(sh, opts = {}) {
   const out = [];
   const walk = (node, path, room) => {
-    if (!appliesToday(node, sh)) return;
+    if (!appliesToday(node, sh, path)) return;
     if (node.repeat) {
       (sh.entries[path] || []).forEach((e) => {
         (node.repeat.children || []).forEach((c) =>
@@ -248,8 +248,14 @@ function shiftDay(sh) {
   return sh ? new Date(sh.start) : new Date();
 }
 
-function appliesToday(node, sh) {
+function appliesToday(node, sh, path) {
   if (node.skipIf && sh && sh.checks[node.skipIf]) return false;
+  // Shown only for some answers of a sibling dropdown (the hospice sticker only
+  // matters for hospice). Stays while unanswered, or once it has been ticked.
+  if (node.onlyIf && sh && path && !sh.checks[path]) {
+    const v = sh.values[path.replace(/[^.]+$/, node.onlyIf.sibling)];
+    if (v && !node.onlyIf.in.includes(v)) return false;
+  }
   if (!node.when) return true;
   const d = shiftDay(sh);
   if (d.getDay() !== node.when.dow) return false;
@@ -302,7 +308,7 @@ function dueCardHTML(sh) {
 /* Counts every checkbox the user can actually see, so the ring never promises
  * progress on tasks that are hidden or not due tonight. */
 function countNode(node, path, sh, acc) {
-  const due = appliesToday(node, sh);
+  const due = appliesToday(node, sh, path);
   if (!due) return;          // a set-aside task and its subtasks don't count
   if (node.repeat) {
     const list = sh.entries[path] || [];
@@ -462,8 +468,10 @@ function itemTimeable(node) {
 
 function itemTimeHTML(node, path, sh) {
   const t = (sh.times || {})[path] || '';
-  return `<input type="time" class="item-time" data-act="item-time" data-path="${esc(path)}"
-    value="${esc(t)}" aria-label="Time for ${esc(node.label)}">`;
+  // Unset: just a small clock to tap. Set: the time itself, still tappable.
+  return `<label class="tpick${t ? ' set' : ''}">${t ? '' : svg('clock')}<input type="time" class="item-time"
+    data-act="item-time" data-path="${esc(path)}" value="${esc(t)}"
+    aria-label="${t ? 'Time' : 'Set a time'} for ${esc(node.label)}"></label>`;
 }
 
 function nodeHTML(node, path, sh, depth) {
@@ -473,7 +481,8 @@ function nodeHTML(node, path, sh, depth) {
   if (node.bare && node.field) return fieldHTML(node, path, sh);
 
   const checked = !!sh.checks[path];
-  const due = appliesToday(node, sh);
+  const due = appliesToday(node, sh, path);
+  if (!due && node.onlyIf) return '';   // doesn't apply to this patient
 
   // Set aside with its opt-out box: one quiet line, no body.
   if (!due && node.skipIf) {
@@ -969,11 +978,12 @@ function openReport() {
   const sh = S.shift;
   if (!sh) { openHistory(); return; }
   const p = overallProgress(sh);
-  const outstanding = [];
-  TEMPLATE.forEach((sec) => {
+  // Sections with something left, each one tap away from its checklist.
+  const outstanding = TEMPLATE.map((sec) => {
     const q = sectionProgress(sec, sh);
-    if (q.total - q.done > 0) outstanding.push(`${sec.title} — ${q.total - q.done} left`);
-  });
+    return q.total - q.done > 0 ? `<button class="open-row" data-act="report-jump" data-sec="${esc(sec.id)}">
+        <span>${esc(sec.title)}</span><span class="open-n">${q.total - q.done} left</span>${svg('chev', 'chev')}</button>` : '';
+  }).join('');
 
   sheet(`
     <div class="sheet-nav">
@@ -982,8 +992,8 @@ function openReport() {
       <span class="txt-btn"></span>
     </div>
     <div class="sheet-body">
-      <p>${hhmm(sh.start)} – now · <b>${p.done} of ${p.total}</b> complete.
-        ${outstanding.length ? 'Still open: ' + esc(outstanding.join(' · ')) + '.' : 'Nothing outstanding.'}</p>
+      <p>${hhmm(sh.start)} – now · <b>${p.done} of ${p.total}</b> complete.${outstanding ? '' : ' Nothing outstanding.'}</p>
+      ${outstanding ? `<div class="open-list"><div class="caps">Still open</div>${outstanding}</div>` : ''}
       <div class="report">${esc(reportText(sh))}</div>
       <button class="btn" data-act="copy-report">${svg('copy')} Copy as text</button>
       <button class="btn" data-act="print">${svg('print')} Print / Save as PDF</button>
@@ -1081,7 +1091,7 @@ function pushReport(list, n) {
 }
 
 function nodeReport(node, path, sh) {
-  if (!appliesToday(node, sh)) return null;   // a Tuesday task on a Thursday is noise
+  if (!appliesToday(node, sh, path)) return null;   // a Tuesday task on a Thursday is noise
   if (node.field && node.field.type === 'select' && !sh.values[path]) return null;   // unset status
 
   const done = !!sh.checks[path];
@@ -1197,6 +1207,16 @@ function sheet(html) {
   s.hidden = false;
   $('#sheet').scrollTop = 0;
 }
+/* After switching page, bring the top of the new page into view if it is
+ * hidden under the header — but don't jump when it is already on screen. */
+function toContent() {
+  const app = $('#app');
+  const head = document.querySelector('header.top');
+  const offset = head ? head.getBoundingClientRect().height : 0;
+  const top = app.getBoundingClientRect().top;
+  if (top < offset) window.scrollTo(0, Math.max(0, window.scrollY + top - offset));
+}
+
 function closeSheet() {
   $('#scrim').hidden = true;
   $('#sheet').innerHTML = '';
@@ -1220,6 +1240,16 @@ document.addEventListener('click', async (ev) => {
 
   switch (act) {
     case 'check': toggleCheck(path); break;
+
+    case 'report-jump': {   // from the report straight to that section's checklist
+      S.tab = 'everything';
+      focusSection = el.dataset.sec;
+      S.shift.open[focusSection] = true;
+      save();
+      closeSheet();
+      toContent();
+      break;
+    }
 
     case 'toggle-sec': {
       const id = el.dataset.sec;
@@ -1414,6 +1444,9 @@ document.addEventListener('click', async (ev) => {
 /* close the sheet by tapping the dimmed area behind it */
 document.addEventListener('click', (ev) => {
   if (ev.target.id === 'scrim') closeSheet();
+  // the hidden time box under the clock icon: open the picker straight away
+  const ti = ev.target.closest('.tpick:not(.set) .item-time');
+  if (ti && ti.showPicker) { try { ti.showPicker(); } catch (e) { /* picker already open */ } }
 });
 
 /* field edits — input for text, change for select */
