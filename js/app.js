@@ -56,6 +56,7 @@ const blankShift = () => ({
 
 /* Shifts saved before these fields existed get them on first open. */
 function ensureShiftFields(sh) {
+  sh.times = sh.times || {};    // checklist item path -> 'HH:MM', set by hand
   sh.custom = sh.custom || [];
   sh.roomList = sh.roomList || [];
   sh.notes = sh.notes || [];
@@ -454,6 +455,17 @@ function badgeFor(node, path, sh) {
   return bits.join('');
 }
 
+/* Only plain tick-off items take a time. Lists and text fields keep their own. */
+function itemTimeable(node) {
+  return !node.field && !node.repeat && !node.bare;
+}
+
+function itemTimeHTML(node, path, sh) {
+  const t = (sh.times || {})[path] || '';
+  return `<input type="time" class="item-time" data-act="item-time" data-path="${esc(path)}"
+    value="${esc(t)}" aria-label="Time for ${esc(node.label)}">`;
+}
+
 function nodeHTML(node, path, sh, depth) {
   // A "bare" node is only a container for its repeat list — drawing a checkbox
   // for it would just be a box you can never meaningfully tick.
@@ -478,6 +490,7 @@ function nodeHTML(node, path, sh, depth) {
         <div class="row-title">
           <span class="lbl" style="${due ? '' : 'opacity:.5'}">${esc(node.label)}</span>
           ${badgeFor(node, path, sh)}
+          ${itemTimeable(node) ? itemTimeHTML(node, path, sh) : ''}
           ${checked ? `<span class="stamp">${hhmm(sh.checks[path])}</span>` : ''}
         </div>
         ${node.note ? `<div class="row-note">${esc(node.note)}</div>` : ''}
@@ -1417,6 +1430,16 @@ document.addEventListener('input', (ev) => {
 document.addEventListener('change', (ev) => {
   const el = ev.target.closest('[data-act="val"]');
   if (el && el.tagName === 'SELECT') { setValue(el.dataset.path, el.value); render(); }
+
+  // a checklist item's time: empty clears it
+  const ti = ev.target.closest('[data-act="item-time"]');
+  if (ti && S.shift) {
+    ensureShiftFields(S.shift);
+    if (ti.value) S.shift.times[ti.dataset.path] = ti.value;
+    else delete S.shift.times[ti.dataset.path];
+    save();
+    render();
+  }
 
   // the time wheel commits on close, so re-sort only then
   const t = ev.target.closest('[data-act="sched-time"]');

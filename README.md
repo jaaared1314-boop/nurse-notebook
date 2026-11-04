@@ -109,6 +109,11 @@ and the Due tonight card, and show as *Not tonight*. Untick it if a patient come
 wizard**, due around 0600 before dayshift. Type the assignment in the box as you enter
 it, so the report shows what went in.
 
+**Times on checklist items.** Any tick-off item in Everything else has a small time box
+on the right. Set a time and the item appears on the Timeline at that hour, where you can
+tick it too. Clear the box to take it off the Timeline again. Items with a fixed time
+(such as the 0600 restraint check) keep it unless you set your own.
+
 **Working short.** There is no secretary on nights, so that work sits in Forms &
 Logs as ordinary tasks. The chem stick, bath and restock list sits at the bottom
 under *If No Aide on the Floor* — tick it on the nights it applies and skip it

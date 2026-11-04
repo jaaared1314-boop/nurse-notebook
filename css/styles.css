@@ -873,3 +873,7 @@ main.wrap { padding-top: 64px; }
 @media (min-width: 900px) { .room-list { display: grid; } }
 .sec-row, .sec-title, .room-head, .section-head, .tl-task, .due-item, .hist, .add-task, .add-room, .add-btn, .pagelinks button, .tools button, .note { text-align: left; }
 .sec-title { display: block; }
+
+/* a checklist item's own time, set by hand */
+.item-time { min-height: 32px; padding: 4px 8px; margin-left: 8px; background: none; border: 0; border-bottom: 1px solid var(--label); color: var(--label); font: 500 13px/1.2 var(--font); font-variant-numeric: tabular-nums; }
+.item-time:focus { outline: 2px solid var(--label); outline-offset: 2px; }

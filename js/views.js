@@ -111,9 +111,11 @@ function timelineItems(sh) {
         items.push({ kind: 'sched', path, uid: it.uid, done: !!it.done, doneAt: it.done,
           at: nextOccurrence(it.time, sh), room, label: node.label });
       });
-    } else if (node.at && !node.field) {
+    } else if (!node.field && !node.repeat && ((sh.times || {})[path] || node.at)) {
+      // a time set by hand wins over the fixed one in the template
+      const t = (sh.times || {})[path] || node.at;
       items.push({ kind: 'check', path, done: !!sh.checks[path], doneAt: sh.checks[path],
-        at: nextOccurrence(node.at, sh), room, label: node.label });
+        at: nextOccurrence(t, sh), room, label: node.label });
     }
   });
   sh.todos.forEach((t) => {
