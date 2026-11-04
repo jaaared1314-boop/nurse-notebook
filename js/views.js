@@ -243,6 +243,7 @@ function roomTasks(sh) {
     if (isRepeat || !room) return;
     if (node.field && node.field.type === 'schedule') add(room, { kind: 'sched', node, path });
     else if (!node.field && !node.bare && !node.repeat) add(room, { kind: 'check', node, path });
+    else if (node.field && node.field.type === 'select') add(room, { kind: 'field', node, path });
   });
   customList(sh).forEach((c) => { if (c.room) add(c.room, { kind: 'custom', c }); });
   return byRoom;
@@ -258,7 +259,7 @@ function roomCounts(sh, tasks) {
       const list = schedList(sh, t.path);
       acc.total += list.length;
       acc.done += list.filter((x) => x.done).length;
-    } else {
+    } else if (t.kind === 'custom') {
       acc.total++;
       if (t.c.done) acc.done++;
     }
@@ -267,6 +268,10 @@ function roomCounts(sh, tasks) {
 }
 
 function taskRowHTML(sh, t) {
+  if (t.kind === 'field') {
+    return `<div class="room-sched"><div class="room-sched-label">${esc(t.node.label)}</div>
+      ${fieldHTML(t.node, t.path, sh)}</div>`;
+  }
   if (t.kind === 'sched') {
     return `<div class="room-sched"><div class="room-sched-label">${esc(t.node.label)}</div>
       ${fieldHTML(t.node, t.path, sh)}</div>`;

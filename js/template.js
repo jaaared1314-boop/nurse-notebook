@@ -60,6 +60,12 @@ const TEMPLATE = [
           addLabel: 'Add rooms',
           field: { type: 'room' },
           children: [
+            {
+              id: 'status',
+              label: 'Status',
+              bare: true,
+              field: { type: 'select', options: ['Admitted', 'Transferred', 'Discharged', 'Hospice', 'Expired'] },
+            },
             { id: 'sticker', label: 'Stickered in log book' },
             {
               id: 'hospice',

@@ -114,6 +114,11 @@ on the right. Set a time and the item appears on the Timeline at that hour, wher
 tick it too. Clear the box to take it off the Timeline again. Items with a fixed time
 (such as the 0600 restraint check) keep it unless you set your own.
 
+**Patient status.** Under *Admit / Transfer / Discharge*, each patient has a **Status**
+dropdown: Admitted, Transferred, Discharged, Hospice or Expired. It shows on the Rooms
+screen too, and the report includes it once it's set. The sticker and hospice tick boxes
+are still there, so you can keep using them.
+
 **Working short.** There is no secretary on nights, so that work sits in Forms &
 Logs as ordinary tasks. The chem stick, bath and restock list sits at the bottom
 under *If No Aide on the Floor* — tick it on the nights it applies and skip it

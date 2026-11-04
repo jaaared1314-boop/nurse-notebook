@@ -570,6 +570,13 @@ function fieldHTML(node, path, sh) {
     return `<div class="field">${roomSelectHTML(path, v)}</div>`;
   }
 
+  if (f.type === 'select') {
+    const opts = ['<option value="">Choose status</option>'].concat((f.options || []).map((o) =>
+      `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`));
+    return `<div class="field"><select data-act="val" data-path="${esc(path)}"
+      aria-label="${esc(node.label)}">${opts.join('')}</select></div>`;
+  }
+
   return `<div class="field"><input type="text" data-act="val" data-path="${esc(path)}"
     value="${esc(v || '')}" placeholder="${esc(f.placeholder || '')}"></div>`;
 }
@@ -1075,6 +1082,7 @@ function pushReport(list, n) {
 
 function nodeReport(node, path, sh) {
   if (!appliesToday(node, sh)) return null;   // a Tuesday task on a Thursday is noise
+  if (node.field && node.field.type === 'select' && !sh.values[path]) return null;   // unset status
 
   const done = !!sh.checks[path];
   const at = sh.checks[path] || null;
