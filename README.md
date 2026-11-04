@@ -31,7 +31,7 @@ launch. Your rooms, your current shift, and your history are untouched.
 
 ## How it works
 
-**Four screens, one tab bar at the bottom:**
+**Four screens, linked from the top bar:**
 
 - **Timeline:** the night as hours, from the first check to the last. A *now* line
   marks where you are, and quiet hours collapse to one line. Timed checks are here,
@@ -44,7 +44,7 @@ launch. Your rooms, your current shift, and your history are untouched.
 - **Notes:** sticky-note squares for anything you want to jot down. Notes aren't part
   of the checklist or the report.
 
-Settings, the shift report and past shifts are in the header.
+Settings, the shift report and past shifts are in the top bar, next to the page links.
 
 **Start a shift** from the home screen. The checklist resets clean, and a clock
 starts. Everything you type is saved to the phone as you go, so you can close the

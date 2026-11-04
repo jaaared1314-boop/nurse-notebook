@@ -13,7 +13,7 @@ const VIEWS = [
   { id: 'notes', label: 'Notes', icon: 'note' },
 ];
 
-const NOTE_COLORS = ['#F3D27A', '#F4B3C2', '#A9D8F0', '#C4E6B2'];
+const NOTE_COLORS = ['var(--soft)', 'var(--bg)'];   // shaded and outlined, alternating
 
 let composer = null;        // { room, timed, text, time } while the add-task form is open
 let focusSection = null;    // section id open inside Everything else
@@ -39,19 +39,33 @@ function renderShift(sh) {
   const view = currentView();
   const prog = overallProgress(sh);
   const title = VIEWS.find((v) => v.id === view).label;
-  $('#hdr').innerHTML = `
-    <div class="navbar">
-      <button class="icon-btn" data-act="history" aria-label="Past shifts">${svg('clock')}</button>
-      <div class="nav-title">${esc(S.settings.unit || 'Charge Nurse')}
-        <small>${dayStamp(sh.start)} · on since ${hhmm(sh.start)} · ${elapsed(sh.start)}</small>
-      </div>
-      <button class="icon-btn" data-act="report" aria-label="Shift report">${svg('print')}</button>
-      <button class="icon-btn" data-act="settings" aria-label="Settings">${svg('gear')}</button>
+  const left = prog.total - prog.done;
+
+  // Next timed item and anything past its time, from the same list the Timeline shows.
+  const now = Date.now();
+  const timed = timelineItems(sh).filter((i) => !i.done);
+  const next = timed.find((i) => i.at.getTime() >= now);
+  const late = timed.filter((i) => i.at.getTime() < now).length;
+  const nextName = next ? (next.room ? next.room + ': ' + next.label : next.label) : '';
+  const status = next
+    ? `Next: ${nextName} at ${hhmm(next.at)}.${late ? ` ${late} past its time.` : ''}`
+    : (late ? `${late} timed ${late === 1 ? 'check is' : 'checks are'} past its time.` : 'No timed checks left tonight.');
+
+  $('#pagename').textContent = title;
+  $('#hdr').innerHTML = `<div class="wrap">
+    <div class="caps">${dayStamp(sh.start)} · on since ${hhmm(sh.start)} · ${elapsed(sh.start)}</div>
+    <div class="big">${left}<small>left tonight</small></div>
+    <p class="lede">${esc(status)}</p>
+    <div class="stats">
+      <div class="stat"><span class="k">Next due</span><span class="v">${next ? hhmm(next.at) : '—'}</span>
+        <span class="s">${next ? esc(nextName) : 'Nothing timed is left'}</span></div>
+      <div class="stat"><span class="k">Past time</span><span class="v">${late}</span>
+        <span class="s">${late ? 'Timed checks not yet ticked' : 'Nothing is past its time'}</span></div>
+      <div class="stat"><span class="k">Done</span><span class="v">${prog.done}</span>
+        <span class="s">of ${prog.total} tasks tonight</span></div>
     </div>
-    <div class="large-title">${esc(title)}
-      <small>${prog.done} of ${prog.total} done${prog.total && prog.done === prog.total ? ' · all clear' : ''}</small>
-    </div>
-    <div class="track"><div class="fill" style="width:${prog.total ? (prog.done / prog.total) * 100 : 0}%"></div></div>`;
+    <div class="track"><div class="fill" style="width:${prog.total ? (prog.done / prog.total) * 100 : 0}%"></div></div>
+  </div>`;
 
   const body = {
     timeline: timelineHTML,

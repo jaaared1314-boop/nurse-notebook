@@ -632,13 +632,12 @@ function todoHTML(sh) {
 }
 
 function renderStart(root) {
-  $('#hdr').innerHTML = `
-    <div class="navbar">
-      <button class="icon-btn" data-act="history" aria-label="Past shifts">${svg('clock')}</button>
-      <div class="nav-title">${esc(S.settings.unit || 'Charge Nurse')}</div>
-      <button class="icon-btn" data-act="settings" aria-label="Settings">${svg('gear')}</button>
-    </div>
-    <div class="large-title">Charge Nurse<small>${dayStamp(new Date())} · nights</small></div>`;
+  $('#pagename').textContent = '';
+  $('#hdr').innerHTML = `<div class="wrap">
+    <div class="caps">${dayStamp(new Date())} · nights</div>
+    <div class="big">${esc(S.settings.unit || 'Charge Nurse')}</div>
+    <p class="lede">Start tonight's shift to open the checklist. Your last shift is kept under History.</p>
+  </div>`;
   renderTabs();
 
   const needRooms = !S.settings.rooms.length;

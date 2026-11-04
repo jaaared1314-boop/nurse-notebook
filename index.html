@@ -17,16 +17,31 @@
 <link rel="icon" href="icons/icon-192.png" sizes="192x192">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-<header id="hdr"></header>
+<header class="top">
+  <div class="wrap topbar">
+    <a class="mark" href="./">Charge.<span id="pagename"></span></a>
+    <nav id="tabs" class="pagelinks" aria-label="Pages"></nav>
+    <nav class="tools" aria-label="Tools">
+      <button type="button" data-act="history">History</button>
+      <button type="button" data-act="report">Report</button>
+      <button type="button" data-act="settings">Settings</button>
+    </nav>
+  </div>
+</header>
 
-<main id="app"></main>
+<section class="hero" id="hdr" aria-label="Summary"></section>
 
-<nav class="tabbar" id="tabs"></nav>
+<main class="wrap" id="app"></main>
+
+<footer class="foot">
+  <div class="wrap">Saved on this phone. Reminders stay off unless you turn them on in Settings.</div>
+</footer>
 
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"></div></div>
 
