@@ -39,7 +39,7 @@ launch. Your rooms, your current shift, and your history are untouched.
   time sit under *Untimed*.
 - **Rooms:** one card per patient room, with that room's tasks and times, and an
   **Add task** button. Add a task with a time, or choose *No time* for an untimed one.
-  Tap **Add a room** for rooms not on any list yet.
+  Tap **Change rooms** to mark rooms occupied or vacated (see below).
 - **Everything else:** the full checklist, section by section, as it was before.
 - **Notes:** sticky-note squares for anything you want to jot down. Notes aren't part
   of the checklist or the report.
@@ -47,7 +47,8 @@ launch. Your rooms, your current shift, and your history are untouched.
 Settings, the shift report and past shifts are in the top bar, next to the page links.
 
 **Start a shift** from the home screen. The checklist resets clean, and a clock
-starts. Everything you type is saved to the phone as you go, so you can close the
+starts. First it asks which rooms are occupied: tap them on the grid of your unit's
+rooms (from Settings), or use **All**, **None** or **Same as last shift**. Everything you type is saved to the phone as you go, so you can close the
 app mid-shift, get pulled into a code, and come back to exactly where you were.
 
 **Every box you tick is timestamped** — the time appears next to it in green, and
@@ -57,7 +58,14 @@ it lands in the report at the end of the shift. Tick it again to undo.
 rooms** and you get a grid of your unit. Tap as many as you need and they are all
 added at once, each with its own set of subtasks. Rooms already on the list are
 dimmed so you do not double up. The trash icon removes a room and everything
-logged under it.
+logged under it. Occupied rooms are listed first, and a room you pick there is
+counted as occupied.
+
+**Occupied and vacated rooms.** The Rooms page shows a card for each occupied room.
+When a patient leaves, tap **Vacated** on that card: the room moves to *Vacated
+tonight* with the time, and keeps any tasks still open. When a new patient arrives,
+tap **New patient** on it (or tap the room in **Change rooms**) to make it occupied
+again. The report lists the occupied rooms and the times rooms were vacated.
 
 **Chem sticks.** Add the rooms, then tap **Add time** under each one for every
 check that room needs tonight. Tap the time to set it on the iPhone's time wheel.

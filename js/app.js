@@ -50,7 +50,8 @@ const blankShift = () => ({
   todos: [],    // {uid, text, room, done, at}
   open: {},     // section id -> bool
   custom: [],   // tasks added in a room or untimed: {uid, room, label, time|null, done}
-  roomList: [], // rooms added by hand, not through a checklist picker
+  roomList: [], // occupied rooms, picked at the start of the shift
+  vacated: {},  // room -> ISO time it was vacated during the shift
   notes: [],    // sticky notes: {uid, text, color, at}
 });
 
@@ -59,6 +60,7 @@ function ensureShiftFields(sh) {
   sh.times = sh.times || {};    // checklist item path -> 'HH:MM', set by hand
   sh.custom = sh.custom || [];
   sh.roomList = sh.roomList || [];
+  sh.vacated = sh.vacated || {};
   sh.notes = sh.notes || [];
   sh.open = sh.open || {};
   return sh;
@@ -779,7 +781,9 @@ function startShift() {
   S.shift = blankShift();
   save();
   render();
-  toast('Shift started');
+  // first thing each shift: which rooms have a patient
+  if (S.settings.rooms.length) openOccupancySheet(true);
+  else toast('Shift started');
 }
 
 function endShift() {
@@ -839,14 +843,23 @@ function renderRoomPicker() {
             aria-label="Remove ${esc(r)}">${svg('x')}</button></span>`).join('')}</div>`
           : '<div style="height:8px"></div>'}` : ''}
 
-      <div class="room-grid">
-        ${S.settings.rooms.map((r) => `<button class="room-opt" data-act="room-pick" data-room="${esc(r)}"
-          aria-pressed="${picked.includes(r)}" data-used="${used.has(r)}">${esc(r)}</button>`).join('')}
-      </div>
+      ${pickGrids(used)}
     </div>`);
 
   const inp = $('#other-room');
   if (inp) inp.focus({ preventScroll: true });
+}
+
+/* Occupied rooms first, so tonight's patients are one tap away. */
+function pickGrids(used) {
+  const occ = new Set(S.shift.roomList);
+  const btn = (r) => `<button class="room-opt" data-act="room-pick" data-room="${esc(r)}"
+    aria-pressed="${picked.includes(r)}" data-used="${used.has(r)}">${esc(r)}</button>`;
+  const mine = S.settings.rooms.filter((r) => occ.has(r));
+  const rest = S.settings.rooms.filter((r) => !occ.has(r));
+  if (!mine.length) return `<div class="room-grid">${rest.map(btn).join('')}</div>`;
+  return `<div class="caps grid-label">Occupied</div><div class="room-grid">${mine.map(btn).join('')}</div>
+    ${rest.length ? `<div class="caps grid-label">Other rooms</div><div class="room-grid">${rest.map(btn).join('')}</div>` : ''}`;
 }
 
 /* Takes whatever is in the free-text box — one room, or several separated by
@@ -865,6 +878,13 @@ function confirmRooms() {
   addTypedRoom();                       // don't lose a room still sitting in the box
   if (!picked.length) { closeSheet(); return; }
   addEntries(pickerPath, picked.slice());
+  // a unit room with a patient task has a patient: count it as occupied
+  // (unless it was vacated tonight; then New patient on Rooms brings it back)
+  picked.forEach((r) => {
+    if (S.settings.rooms.includes(r) && !S.shift.roomList.includes(r) && !S.shift.vacated[r]) S.shift.roomList.push(r);
+  });
+  S.shift.roomList.sort(naturalSort);
+  save();
   const n = picked.length;
   const first = picked[0];
   closeSheet();
@@ -1144,6 +1164,9 @@ function reportText(sh) {
   L.push(`CHARGE NURSE CHECKLIST — ${dayStamp(sh.start)}`);
   if (S.settings.unit) L.push(S.settings.unit);
   L.push(`${hhmm(sh.start)} – ${sh.end ? hhmm(sh.end) : 'in progress'}  ·  ${p.done}/${p.total} complete`);
+  if ((sh.roomList || []).length) L.push(`Occupied (${sh.roomList.length}): ${sh.roomList.join(', ')}`);
+  const gone = Object.entries(sh.vacated || {});
+  if (gone.length) L.push(`Vacated: ${gone.map(([r, at]) => `${r} at ${hhmm(at)}`).join(', ')}`);
   L.push('');
 
   const line = (n, d) => {

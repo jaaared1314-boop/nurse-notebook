@@ -327,32 +327,115 @@ function composerHTML(room) {
 }
 
 function roomCardHTML(sh, room, tasks) {
-  const open = sh.open['room:' + room] !== false;
+  const vacatedAt = sh.vacated[room];
+  const occupied = sh.roomList.includes(room);
+  // a vacated room starts folded; its open tasks are still there when you open it
+  const open = sh.open['room:' + room] === undefined ? !vacatedAt : sh.open['room:' + room] !== false;
   const { done, total } = roomCounts(sh, tasks);
+  const occBtn = occupied && !vacatedAt
+    ? `<button class="add-task quiet" data-act="occ-vacate" data-room="${esc(room)}">Vacated</button>` : '';
   const body = open ? `<div class="room-body">
       ${tasks.map((t) => taskRowHTML(sh, t)).join('') || '<div class="room-empty">No tasks yet for this room.</div>'}
       ${composer && composer.room === room
         ? composerHTML(room)
-        : `<button class="add-task" data-act="cust-open" data-room="${esc(room)}">${svg('plus')} Add task</button>`}
+        : `<div class="room-actions">
+            <button class="add-task" data-act="cust-open" data-room="${esc(room)}">${svg('plus')} Add task</button>
+            ${occBtn}
+          </div>`}
     </div>` : '';
-  return `<section class="room-card" data-room="${esc(room)}">
-    <button class="room-head" data-act="room-toggle" data-room="${esc(room)}" aria-expanded="${open}">
-      <span class="room-name">${esc(room)}</span>
-      <span class="room-sub">${total ? `${done} of ${total} done` : 'No tasks yet'}</span>
-      ${svg('chev', 'chev')}
-    </button>
+  const sub = vacatedAt ? `Vacated ${hhmm(vacatedAt)}${total - done ? ` · ${total - done} open` : ''}`
+    : total ? `${done} of ${total} done` : 'No tasks yet';
+  return `<section class="room-card${vacatedAt ? ' vacated' : ''}" data-room="${esc(room)}">
+    <div class="room-headline">
+      <button class="room-head" data-act="room-toggle" data-room="${esc(room)}" aria-expanded="${open}">
+        <span class="room-name">${esc(room)}</span>
+        <span class="room-sub">${sub}</span>
+        ${svg('chev', 'chev')}
+      </button>
+      ${vacatedAt ? `<button class="add-task" data-act="occ-fill" data-room="${esc(room)}">New patient</button>` : ''}
+    </div>
     ${body}
   </section>`;
 }
 
 function roomsHTML(sh) {
-  const rooms = roomNames(sh);
   const byRoom = roomTasks(sh);
-  const cards = rooms.map((r) => roomCardHTML(sh, r, byRoom[r] || [])).join('');
-  return `<div class="room-list">
-      ${cards || '<div class="empty">No rooms yet. Add one below, or add rooms in a checklist section.</div>'}
-      <button class="add-room" data-act="room-add-new">${svg('plus')} Add a room</button>
-    </div>`;
+  const all = roomNames(sh);
+  const active = all.filter((r) => !sh.vacated[r]);
+  const gone = Object.keys(sh.vacated).sort(naturalSort);
+  const n = sh.roomList.length;
+  const cards = active.map((r) => roomCardHTML(sh, r, byRoom[r] || [])).join('');
+  return `<div class="occ-bar">
+      <span class="occ-count">${n ? `${n} occupied` : 'No rooms marked occupied'}</span>
+      <button class="add-task" data-act="occ-open">${n ? 'Change rooms' : 'Choose occupied rooms'}</button>
+    </div>
+    <div class="room-list">
+      ${cards || '<div class="empty">Tap Choose occupied rooms to list tonight\'s patients.</div>'}
+    </div>
+    ${gone.length ? `<h3 class="room-group-title">Vacated tonight</h3>
+      <div class="room-list">${gone.map((r) => roomCardHTML(sh, r, byRoom[r] || [])).join('')}</div>` : ''}`;
+}
+
+/* ── occupied rooms: tap the unit's rooms on or off ──
+ * Turning a room off during the shift marks it vacated (with the time), so it
+ * can be filled again when a new patient arrives. While first setting up the
+ * shift, or right after a mistaken tap, turning it off just un-picks it. */
+let occSetup = false;          // the start-of-shift pass
+let occFresh = new Set();      // rooms turned on in this sitting
+
+function setOccupied(room, on) {
+  const sh = S.shift;
+  if (on) {
+    if (!sh.roomList.includes(room)) sh.roomList.push(room);
+    delete sh.vacated[room];
+    occFresh.add(room);
+  } else {
+    sh.roomList = sh.roomList.filter((r) => r !== room);
+    if (!occSetup && !occFresh.has(room)) sh.vacated[room] = new Date().toISOString();
+    occFresh.delete(room);
+  }
+  sh.roomList.sort(naturalSort);
+  save();
+}
+
+function openOccupancySheet(setup) {
+  occSetup = !!setup;
+  occFresh = new Set();
+  renderOccupancySheet();
+}
+
+function renderOccupancySheet() {
+  const sh = S.shift;
+  const unit = S.settings.rooms;
+  const last = S.history.find((h) => (h.roomList || []).some((r) => unit.includes(r)));
+  const n = sh.roomList.length;
+  sheet(`
+    <div class="sheet-nav">
+      <span class="txt-btn"></span>
+      <h2>Occupied rooms</h2>
+      <button class="txt-btn strong" data-act="occ-done">Done</button>
+    </div>
+    <div class="sheet-body">
+      <p>${occSetup ? 'Which rooms have a patient tonight? ' : ''}Tap a room to mark it occupied.
+        ${occSetup ? '' : 'Tap an occupied room to mark it vacated. A vacated room can be filled again.'}</p>
+      ${unit.length ? `<div class="occ-tools">
+          <span class="occ-count">${n} occupied</span>
+          <button class="add-task" data-act="occ-all">All</button>
+          <button class="add-task" data-act="occ-none">None</button>
+          ${occSetup && last && !n ? `<button class="add-task" data-act="occ-last">Same as last shift</button>` : ''}
+        </div>
+        <div class="room-grid">
+          ${unit.map((r) => {
+            const on = sh.roomList.includes(r);
+            const gone = sh.vacated[r];
+            return `<button class="room-opt occ-opt${gone ? ' gone' : ''}" data-act="occ-toggle" data-room="${esc(r)}"
+              aria-pressed="${on}">${esc(r)}${gone ? `<small>Vacated ${hhmm(gone)}</small>` : ''}</button>`;
+          }).join('')}
+        </div>
+        <div class="group-footer">Rooms come from Settings.</div>`
+        : `<div class="empty" style="padding:0 var(--gutter)">No rooms set yet.</div>
+           <button class="btn" data-act="settings">Add room numbers in Settings</button>`}
+    </div>`);
 }
 
 function defaultTimeText() {
@@ -372,14 +455,6 @@ function addCustom(room) {
   save();
   render();
   toast('Task added');
-}
-
-function addRoomsByHand(raw) {
-  const names = expandRooms(raw).filter((n) => !roomNames(S.shift).includes(n));
-  if (!names.length) return false;
-  S.shift.roomList.push(...names);
-  save();
-  return true;
 }
 
 /* ───────────────────────────── everything else ───────────────────────────── */
@@ -439,22 +514,6 @@ function openNoteSheet(noteUid) {
   if (ta) setTimeout(() => ta.focus({ preventScroll: true }), 50);
 }
 
-function openRoomAddSheet() {
-  sheet(`
-    <div class="sheet-nav">
-      <button class="txt-btn" data-act="sheet-close">Cancel</button>
-      <h2>Add a room</h2>
-      <button class="txt-btn strong" data-act="room-add-confirm">Add</button>
-    </div>
-    <div class="sheet-body">
-      <p>Type one room, or a range like <b>CCU 16 - CCU 30</b>, or several separated by commas.</p>
-      <div style="padding:0 var(--gutter)">
-        <input type="text" id="new-room" placeholder="e.g. 4W 12, or CCU 24" enterkeyhint="done" autocapitalize="characters">
-      </div>
-    </div>`);
-  setTimeout(() => { const i = $('#new-room'); if (i) i.focus({ preventScroll: true }); }, 50);
-}
-
 /* ───────────────────────────── actions ───────────────────────────── */
 
 /* Returns true if the click belongs to a shift view. */
@@ -474,7 +533,7 @@ function viewAction(act, el) {
       return true;
     case 'room-toggle': {
       const key = 'room:' + el.dataset.room;
-      sh.open[key] = sh.open[key] === false;
+      sh.open[key] = el.getAttribute('aria-expanded') !== 'true';   // flip what's on screen
       save();
       render();
       return true;
@@ -510,17 +569,48 @@ function viewAction(act, el) {
       save();
       render();
       return true;
-    case 'room-add-new':
-      openRoomAddSheet();
+    case 'occ-open':
+      openOccupancySheet(false);
       return true;
-    case 'room-add-confirm': {
-      const raw = (($('#new-room') || {}).value || '').trim();
-      if (!raw) { toast('Type a room first'); return true; }
-      if (!addRoomsByHand(raw)) { toast('Those rooms are already listed'); return true; }
-      closeSheet();
-      toast('Room added');
+    case 'occ-toggle': {
+      const r = el.dataset.room;
+      setOccupied(r, !sh.roomList.includes(r));
+      renderOccupancySheet();
       return true;
     }
+    case 'occ-all':
+      S.settings.rooms.forEach((r) => { if (!sh.roomList.includes(r)) setOccupied(r, true); });
+      renderOccupancySheet();
+      return true;
+    case 'occ-none':
+      sh.roomList.slice().forEach((r) => { if (S.settings.rooms.includes(r)) setOccupied(r, false); });
+      renderOccupancySheet();
+      return true;
+    case 'occ-last': {
+      const last = S.history.find((h) => (h.roomList || []).some((r) => S.settings.rooms.includes(r)));
+      if (last) last.roomList.filter((r) => S.settings.rooms.includes(r)).forEach((r) => setOccupied(r, true));
+      renderOccupancySheet();
+      return true;
+    }
+    case 'occ-done':
+      occSetup = false;
+      closeSheet();
+      return true;
+    case 'occ-vacate':
+      occFresh = new Set();
+      occSetup = false;
+      setOccupied(el.dataset.room, false);
+      delete sh.open['room:' + el.dataset.room];
+      render();
+      toast(`${el.dataset.room} vacated`);
+      return true;
+    case 'occ-fill':
+      setOccupied(el.dataset.room, true);
+      delete sh.open['room:' + el.dataset.room];
+      save();
+      render();
+      toast(`${el.dataset.room} occupied`);
+      return true;
     case 'sec-open':
       focusSection = el.dataset.sec;
       sh.open[focusSection] = true;
@@ -569,9 +659,5 @@ document.addEventListener('keydown', (ev) => {
   if (ev.target.id === 'cust-text' && composer) {
     ev.preventDefault();
     addCustom(composer.room);
-  }
-  if (ev.target.id === 'new-room') {
-    ev.preventDefault();
-    viewAction('room-add-confirm', null);
   }
 });
