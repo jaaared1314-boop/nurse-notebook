@@ -115,7 +115,8 @@ function timelineItems(sh) {
       // a time set by hand wins over the fixed one in the template
       const t = (sh.times || {})[path] || node.at;
       items.push({ kind: 'check', path, done: !!sh.checks[path], doneAt: sh.checks[path],
-        at: nextOccurrence(t, sh), room, label: node.label });
+        at: nextOccurrence(t, sh), room, label: node.label,
+        tag: path.startsWith('restraints.') ? 'Restraints' : '' });
     }
   });
   sh.todos.forEach((t) => {
@@ -132,7 +133,8 @@ function timelineItems(sh) {
 }
 
 function timedRowHTML(it, now, first, hourLabel) {
-  const title = it.room ? `${it.room}: ${it.label}` : it.label;
+  const base = it.room ? `${it.room}: ${it.label}` : it.label;
+  const title = it.tag ? `${it.tag}, ${base}` : base;
   const late = !it.done && it.at.getTime() < now;
   const soon = !it.done && !late && it.at.getTime() - now <= 20 * 60000;
   const time = it.done ? `done ${hhmm(it.doneAt)}` : hhmm(it.at);
