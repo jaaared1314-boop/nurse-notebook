@@ -980,3 +980,11 @@ main.wrap { padding-top: 64px; }
 .room-headline { display: flex; align-items: center; gap: 16px; }
 .room-headline .room-head { flex: 1; min-width: 0; }
 .room-headline .add-task { margin: 0; flex: none; }
+
+/* iPhone status bar: the blurred strip at the very top can't be tapped, so keep
+   the header's buttons and every sheet's top row clear of it */
+header.top { padding-top: calc(env(safe-area-inset-top, 0px) + 14px); }
+.sheet {
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - 32px);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 32px);
+}
