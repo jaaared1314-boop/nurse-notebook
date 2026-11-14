@@ -7,13 +7,14 @@ phone locked. It is optional. The app works fully offline without it.
 ## What it stores
 
 - One push subscription per phone, created when you switch reminders on.
-- That phone's open timed checks for tonight: the time, the room, and the check's name.
+- That phone's open timed checks for tonight: the time, the room, and the check's name,
+  or for a to-do with a time, its text. To-dos never name a patient; use the room.
 - Nothing else. No notes, no shift history, no patient names.
 
 A check is removed about two hours after it is due. Switching reminders off, or
 deleting the app, removes the phone entirely.
 
-**Privacy.** Room numbers and check names pass through this server and through
+**Privacy.** Room numbers, check names and timed to-do text pass through this server and through
 Apple's push service to your phone. Confirm that your facility's policy allows
 that before you turn reminders on. The rest of the checklist never leaves the phone.
 

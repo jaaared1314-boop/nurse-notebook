@@ -148,7 +148,8 @@ function timedChecks(sh, opts = {}) {
     if (!c.time || c.done) return;
     out.push({ key: 'custom.' + c.uid, dueAt: nextOccurrence(c.time, sh), room: c.room || '', label: c.label });
   });
-  // To-dos are free text and may name patients, so they stay off the reminder server.
+  // To-dos with a time. Their text goes to the reminder server, so they never
+  // name a patient: rooms only.
   if (opts.todos) {
     sh.todos.forEach((t) => {
       if (!t.time || t.done) return;
@@ -161,7 +162,7 @@ function timedChecks(sh, opts = {}) {
 /* Timed checks for the reminder server. Only those not long past. Nothing else from the shift is sent. */
 function reminderItems(sh) {
   const cutoff = Date.now() - DUE_WINDOW_MIN * 60000;
-  return timedChecks(sh)
+  return timedChecks(sh, { todos: true })
     .filter((c) => c.dueAt.getTime() >= cutoff)
     .map((c) => ({ id: c.key, dueAt: c.dueAt.toISOString(), room: c.room, label: c.label }));
 }
@@ -928,7 +929,7 @@ function openSettings() {
             <small>${!pushConfig()
               ? 'Not set up yet. Host the reminder server and add its address to js/config.js (see the README).'
               : pushAvailable()
-                ? 'A notification 15 minutes before each timed check and again when it is due, even with the phone locked. Room numbers and check names are sent to your reminder server.'
+                ? 'A notification 15 minutes before each timed check and again when it is due, even with the phone locked. Room numbers, check names and to-do text are sent to your reminder server, so keep patient names out of to-dos.'
                 : 'Open Charge from its Home Screen icon to use reminders. iPhone only allows them there, not in Safari.'}</small></div>
           <button class="switch" role="switch" aria-checked="${pushOn()}" data-act="push-toggle"
             ${pushAvailable() ? '' : 'disabled'} aria-label="Timed check reminders"></button>

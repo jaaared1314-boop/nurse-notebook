@@ -174,10 +174,11 @@ event or two.
 ## Reminders (optional)
 
 If you host the small reminder server in `server/`, the app can alert you 15 minutes
-before each timed check and again when it is due, even with the phone locked. Turn it
-on under Shift → Settings, then Timed checks. This needs a server, which is the one exception
+before each timed check and timed to-do and again when it is due, even with the phone
+locked. Turn it on in Settings (menu button, top right), then Timed checks. This needs a server, which is the one exception
 to the offline design, so read `server/README.md` first. The server stores each phone's
-check times and room names, and removes them about two hours after they are due.
+check times, room numbers, check names and timed to-do text (never patient names), and
+removes them about two hours after they are due.
 
 Without a server, the app works fully offline and sends nothing.
 
