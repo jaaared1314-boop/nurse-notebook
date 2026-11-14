@@ -1,0 +1,37 @@
+# Fly.io settings for the reminder server. Run `fly launch --copy-config` from
+# this folder (see README.md). If the name below is taken, Fly asks for another.
+app = "charge-reminders-ccu"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  ALLOWED_ORIGIN = "https://jaaared1314-boop.github.io"
+  DATA_FILE = "/data/store.json"
+
+# Tonight's timed checks survive restarts on a small disk (about $0.15 a month).
+[[mounts]]
+  source = "reminder_data"
+  destination = "/data"
+  initial_size = "1gb"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Must stay running all night, or alerts due while it sleeps never go out.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

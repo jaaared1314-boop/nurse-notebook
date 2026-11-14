@@ -47,6 +47,28 @@ If the host has no persistent storage, leave `DATA_FILE` unset. A restart then c
 the stored checks, and the app puts them back the next time you change anything in the
 shift.
 
+### Fly.io (cheapest)
+
+This folder has a `fly.toml` and `Dockerfile` ready. They keep the server running all
+night (it must not sleep, or alerts due while it sleeps never go out) on the smallest
+machine, about $2.19 a month, plus a 1 GB disk so tonight's checks survive a restart,
+about $0.15 a month. Fly waives personal bills under $5 a month. A card is required.
+
+On a computer, in a terminal:
+
+1. Install Fly's tool. Mac: `brew install flyctl`. Windows (PowerShell):
+   `iwr https://fly.io/install.ps1 -useb | iex`. Linux: `curl -L https://fly.io/install.sh | sh`.
+2. `fly auth signup` (or `fly auth login`), and add a card under Billing on fly.io.
+3. `git clone https://github.com/jaaared1314-boop/nurse-notebook` then `cd nurse-notebook/server`
+4. `fly launch --copy-config --no-deploy`. Keep the settings it shows. If the app name
+   is taken, give it another; your address becomes `https://<name>.fly.dev`.
+5. Make the keys (step 1 above) and store them on Fly:
+   `fly secrets set VAPID_PUBLIC=<public> VAPID_PRIVATE=<private> VAPID_SUBJECT=mailto:<your email>`
+6. `fly deploy`
+7. Open `https://<name>.fly.dev/api/health`. It should show `{"ok":true}`.
+
+`ALLOWED_ORIGIN` and `DATA_FILE` are already set in `fly.toml`.
+
 ## 3. Connect the app
 
 In `js/config.js` in the main folder, fill in:
