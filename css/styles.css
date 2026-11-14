@@ -73,7 +73,7 @@ main.wrap { padding-top: 20px; }
 header.top {
   position: sticky; top: 0; z-index: 20;
   background: var(--bg);
-  padding-top: calc(var(--safe-t) + 10px);
+  padding-top: calc(var(--safe-t) + 14px);   /* clear of the status bar strip, which can't be tapped */
   border-bottom: 1px solid var(--sep);
 }
 .topbar { display: flex; align-items: baseline; gap: 16px; padding-bottom: 12px; }

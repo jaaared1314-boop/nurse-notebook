@@ -64,7 +64,7 @@ Requires iOS 16.4 or later. Reminders only work for the app opened from the Home
 Screen, not from Safari. If you added the app before this update, delete the Home Screen
 icon and add it again.
 
-1. Open **Charge** from the Home Screen, then go to Settings.
+1. Open **Charge** from the Home Screen, then go to **Shift → Settings**.
 2. Under Reminders, turn on **Timed checks**.
 3. Tap Allow when iOS asks.
 

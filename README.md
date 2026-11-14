@@ -20,7 +20,7 @@ You now have a *Charge* icon. Opening it gives you a full-screen app with no
 browser bar, and it works with no signal at all.
 
 4. **Check your rooms.** CCU 16 through CCU 30 are already loaded, so there is
-   nothing to do unless the unit changes. If it does, open **Settings** and type
+   nothing to do unless the unit changes. If it does, open **Settings** (on the start screen, or in the Shift tab) and type
    a range like `CCU 16 - CCU 30` or `3401-3420` and it expands to every room in
    between; commas separate rooms that are not in a run (`CCU 16, CCU 22`).
 
@@ -31,7 +31,7 @@ launch. Your rooms, your current shift, and your history are untouched.
 
 ## How it works
 
-**Four screens, linked from the top bar:**
+**Five tabs, along the bottom of the screen:**
 
 - **Timeline:** the night as hours, from the first check to the last. A *now* line
   marks where you are, and quiet hours collapse to one line. Timed checks are here,
@@ -40,11 +40,19 @@ launch. Your rooms, your current shift, and your history are untouched.
 - **Rooms:** one card per patient room, with that room's tasks and times, and an
   **Add task** button. Add a task with a time, or choose *No time* for an untimed one.
   Tap **Change rooms** to mark rooms occupied or vacated (see below).
-- **Everything else:** the full checklist, section by section, as it was before.
+- **Checklist:** the full checklist on one page. Tap a section's title to open it in
+  place; only one is open at a time. Each section's divider fills in as you finish it.
+  Tap a task's text (or its box) to tick it. In room lists such as Restraints and
+  Admit / Transfer / Discharge, tonight's occupied rooms appear as buttons: one tap
+  adds a patient. **Other rooms** opens the full grid.
 - **Notes:** sticky-note squares for anything you want to jot down. Notes aren't part
   of the checklist or the report.
+- **Shift:** what's still open (tap a section to jump to it), the report (Copy, Print or
+  PDF, Calendar), Past shifts, Settings, and **End shift and save**.
 
-Settings, the shift report and past shifts are in the top bar, next to the page links.
+The header shows one line: how many tasks are left, what's next and anything late,
+with a thin progress line under it. The header, tab bar and sheets are frosted glass
+that the checklist scrolls under; with *Reduce Transparency* on, they turn solid.
 
 **Start a shift** from the home screen. The checklist resets clean, and a clock
 starts. First it asks which rooms are occupied: tap them on the grid of your unit's
@@ -97,7 +105,7 @@ of the time they sit there greyed out and labelled, rather than vanishing.
 On the nights one of these is due, a **Due tonight** card sits at the top of the
 Timeline, and on the start screen before you begin, so you don't have to
 remember what night it is. Tap an item in the card to jump straight to it in
-Everything else. Each
+the Checklist. Each
 one ticks itself off in the card as you finish it, and the card turns green
 once they're all done.
 
@@ -117,7 +125,7 @@ and the Due tonight card, and show as *Not tonight*. Untick it if a patient come
 wizard**, due around 0600 before dayshift. Type the assignment in the box as you enter
 it, so the report shows what went in.
 
-**Times on checklist items.** Any tick-off item in Everything else has a small clock
+**Times on checklist items.** Any tick-off item in the Checklist has a small clock
 next to it. Tap it to pick a time and the item appears on the Timeline at that hour, where you can
 tick it too. Clear the box to take it off the Timeline again. Items with a fixed time
 (such as the 0600 restraint check) keep it unless you set your own.
@@ -127,26 +135,23 @@ dropdown: Admitted, Transferred, Discharged, Hospice or Expired. It shows on the
 screen too, and the report includes it once it's set. The hospice sticker box only shows
 while the status is blank or set to Hospice, so it doesn't count against other patients.
 
-**Report.** The Report sheet lists every section that still has something open. Tap one
-to jump straight to it.
-
 **Working short.** There is no secretary on nights, so that work sits in Forms &
 Logs as ordinary tasks. The chem stick, bath and restock list sits at the bottom
 under *If No Aide on the Floor* — tick it on the nights it applies and skip it
 otherwise.
 
-**Report.** The Report tab shows a plain-text version of the whole checklist with
-timestamps, ticked and unticked alike. **Copy as text** puts it on the clipboard.
-**Print / Save as PDF** opens the iOS print sheet — AirPrint it, or pinch out on
-the preview to save a PDF you can attach. **End shift** files it under History and
-clears the live checklist.
+**Report.** Under the Shift tab, *Preview the report* shows a plain-text version of the whole checklist with
+timestamps, ticked and unticked alike. **Copy** puts it on the clipboard.
+**Print or PDF** opens the iOS print sheet — AirPrint it, or pinch out on
+the preview to save a PDF you can attach. **End shift and save** files it under Past
+shifts and clears the live checklist.
 
-**History** keeps past shifts on the phone. Open one to read, copy, print, or
+**Past shifts** keeps past shifts on the phone. Open one to read, copy, print, or
 delete it.
 
 ## Add timed checks to Calendar
 
-On the **This shift** part of Settings, tap **Add timed checks to Calendar**. It downloads
+On the **Shift** tab, tap **Calendar**. It downloads
 a `.ics` file with one event per open timed check, titled *Room: Task* (for example
 *CCU 17: Chem stick*). Each event alerts 15 minutes before and at the time, and Calendar
 shows those alerts even with the phone locked. No server is involved.
@@ -170,7 +175,7 @@ event or two.
 
 If you host the small reminder server in `server/`, the app can alert you 15 minutes
 before each timed check and again when it is due, even with the phone locked. Turn it
-on under Settings, then Timed checks. This needs a server, which is the one exception
+on under Shift → Settings, then Timed checks. This needs a server, which is the one exception
 to the offline design, so read `server/README.md` first. The server stores each phone's
 check times and room names, and removes them about two hours after they are due.
 
