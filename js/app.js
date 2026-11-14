@@ -33,6 +33,7 @@ const I = {
   trash: '<path d="M4.6 7h14.8M9.4 7V4.6h5.2V7M6.6 7l.9 12.2a1.8 1.8 0 001.8 1.6h5.4a1.8 1.8 0 001.8-1.6L17.4 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   minus: '<path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
   play: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M10 8.4l6 3.6-6 3.6z" fill="currentColor"/>',
+  moon: '<path d="M19.5 14.6A7.8 7.8 0 019.4 4.5a7.8 7.8 0 1010.1 10.1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
   stop: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><rect x="9" y="9" width="6" height="6" rx="1.2" fill="currentColor"/>',
 };
 const svg = (n, cls) => `<svg class="${cls || ''}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
@@ -383,27 +384,28 @@ function elapsed(start) {
   return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
 }
 
-function groupHTML(sec, sh) {
-  const open = sh.open[sec.id] !== false;
+/* One checklist section: a title row that opens it in place. Only one
+ * section is open at a time, so the page stays short and nothing needs a
+ * Back button. Printing renders every section open. */
+function groupHTML(sec, sh, forceOpen) {
+  const open = forceOpen || focusSection === sec.id;
   const p = sectionProgress(sec, sh);
   const complete = p.total > 0 && p.done === p.total;
-  const body = sec.kind === 'todo'
+  const body = !open ? '' : sec.kind === 'todo'
     ? todoHTML(sh)
     : (sec.items || [])
         .map((it) => nodeHTML(it, sec.id + '.' + it.id, sh, 0))
         .join('');
+  const pct = p.total ? (p.done / p.total) * 100 : 0;
 
-  return `<section class="group" data-open="${open}" data-sec="${sec.id}">
-    <div class="card">
-      <button class="section-head" data-act="toggle-sec" data-sec="${sec.id}">
-        <h2>${esc(sec.title)}</h2>
-        <span class="pill ${complete ? 'complete' : ''}">${
-          p.total === 0 ? '' : complete ? 'Done' : p.done + '/' + p.total}</span>
-        ${svg('chev', 'chev')}
-      </button>
-      <div class="section-body">${body}</div>
-    </div>
-    ${sec.blurb ? `<div class="group-footer">${esc(sec.blurb)}</div>` : ''}
+  return `<section class="group${complete ? ' complete' : ''}" data-open="${open}" data-sec="${sec.id}">
+    <button class="section-head" data-act="toggle-sec" data-sec="${sec.id}" aria-expanded="${open}">
+      <h2>${esc(sec.title)}</h2>
+      <span class="pill">${p.total === 0 ? '' : complete ? 'Done' : `${p.done} of ${p.total}`}</span>
+      ${svg('chev', 'chev')}
+      <span class="sec-meter" aria-hidden="true"><span style="width:${pct}%"></span></span>
+    </button>
+    ${open ? `<div class="section-body">${sec.blurb ? `<p class="sec-note">${esc(sec.blurb)}</p>` : ''}${body}</div>` : ''}
   </section>`;
 }
 
@@ -499,7 +501,7 @@ function nodeHTML(node, path, sh, depth) {
               aria-label="${esc(node.label)}">${svg('check')}</button>
       <div class="row-main">
         <div class="row-title">
-          <span class="lbl" style="${due ? '' : 'opacity:.5'}">${esc(node.label)}</span>
+          <span class="lbl" data-act="check" data-path="${esc(path)}" style="${due ? '' : 'opacity:.5'}">${esc(node.label)}</span>
           ${badgeFor(node, path, sh)}
           ${itemTimeable(node) ? itemTimeHTML(node, path, sh) : ''}
           ${checked ? `<span class="stamp">${hhmm(sh.checks[path])}</span>` : ''}
@@ -629,10 +631,16 @@ function repeatHTML(node, path, sh) {
   }).join('');
 
   const act = isRoom ? 'rooms-open' : 'entry-add';
+  // Tonight's occupied rooms not on this list yet: one tap each.
+  const used = new Set(list.map((e) => e.name));
+  const quick = isRoom ? sh.roomList.filter((r) => !used.has(r)) : [];
   return `${entries}<div class="add-row">
+    ${quick.length ? `<div class="quick-rooms" role="group" aria-label="Add an occupied room">
+      ${quick.map((r) => `<button class="quick-room" data-act="quick-room" data-path="${esc(path)}"
+        data-room="${esc(r)}">${svg('plus')}${esc(r)}</button>`).join('')}</div>` : ''}
     <button class="add-btn" data-act="${act}" data-path="${esc(path)}"
       data-any="${!!node.repeat.anyRoom}">
-      <span class="plus">${svg('plus')}</span>${esc(node.repeat.addLabel || 'Add')}
+      <span class="plus">${svg('plus')}</span>${esc(quick.length ? (node.repeat.anyRoom ? 'Other room' : 'Other rooms') : node.repeat.addLabel || 'Add')}
     </button>
   </div>`;
 }
@@ -643,7 +651,7 @@ function todoHTML(sh) {
       <button class="check" role="checkbox" aria-checked="${t.done}" data-act="todo-check" data-uid="${t.uid}"
         aria-label="${esc(t.text)}">${svg('check')}</button>
       <div class="row-main"><div class="row-title">
-        <span class="lbl">${esc(t.text)}</span>
+        <span class="lbl" data-act="todo-check" data-uid="${t.uid}">${esc(t.text)}</span>
         ${t.room ? `<span class="badge today">${esc(t.room)}</span>` : ''}
         ${t.time && !t.done ? `<span class="todo-due">${esc(t.time)}</span>` : ''}
         ${t.done && t.at ? `<span class="stamp">${hhmm(t.at)}</span>` : ''}
@@ -663,49 +671,33 @@ function todoHTML(sh) {
 }
 
 function renderStart(root) {
-  $('#pagename').textContent = '';
+  $('#status').innerHTML = '';
+  $('#meter').style.width = '0';
+  $('#hdr').hidden = false;
   $('#hdr').innerHTML = `<div class="wrap">
-    <div class="caps">${dayStamp(new Date())} · nights</div>
-    <div class="big">${esc(S.settings.unit || 'Charge Nurse')}</div>
-    <p class="lede">Start tonight's shift to open the checklist. Your last shift is kept under History.</p>
+    <p class="hero-date">${dayStamp(new Date())} · nights</p>
+    <h1 class="hero-title">${esc(S.settings.unit || 'Charge nurse')}</h1>
+    <button class="btn primary big-btn" data-act="shift-start">${svg('play')} Start tonight's shift</button>
   </div>`;
   renderTabs();
 
-  const needRooms = !S.settings.rooms.length;
   const due = dueTonight(null);
-  root.innerHTML = `${due.length ? `<section class="group">
-      <div class="card due-card">
-        <div class="due-head">${svg('bell')}<span>Due tonight</span></div>
-        ${due.map((d) => `<div class="due-item static">
-            <span class="due-dot"></span><span class="due-label">${esc(d.label)}</span></div>`).join('')}
-      </div>
-    </section>` : ''}<section class="group">
-      <div class="card" style="padding:20px 16px">
-        <p style="margin:0 0 18px;font-size:15px;letter-spacing:-.24px;color:var(--label-2);line-height:1.45">
-          Start a shift and the checklist resets with a clean slate. Every box you tick is
-          timestamped, and the whole thing is saved to this phone as you go — you can close
-          the app mid-shift and pick up exactly where you left off.
-        </p>
-        <button class="btn primary" data-act="shift-start" style="width:100%;margin:0">
-          ${svg('play')} Start tonight's shift
-        </button>
-      </div>
-    </section>
-    ${needRooms ? `<section class="group">
-      <div class="group-header"><span class="gh-title">First time</span></div>
-      <div class="card">
-        <button class="section-head" data-act="settings">
-          <h2 style="font-weight:400;color:var(--blue)">Add your unit's room numbers</h2>
-          ${svg('chev', 'chev')}
-        </button>
-      </div>
-      <div class="group-footer">Room dropdowns stay empty until you do. You can paste a range
-        like 3401-3420 and the app will expand it.</div>
+  root.innerHTML = `${due.length ? `<section class="block">
+      <h2 class="block-title">Due tonight</h2>
+      <div class="list">${due.map((d) => `<div class="list-row static">
+          <span class="list-main">${esc(d.label)}</span></div>`).join('')}</div>
     </section>` : ''}
-    ${S.history.length ? `<section class="group">
-      <div class="group-header"><span class="gh-title">Recent</span></div>
-      <div class="card">${S.history.slice(0, 3).map(histRowHTML).join('')}</div>
-    </section>` : ''}`;
+    ${!S.settings.rooms.length ? `<section class="block">
+      <p class="muted">Add your unit's room numbers first, so you can pick them with one tap.</p>
+    </section>` : ''}
+    <section class="block">
+      <div class="list">
+        <button class="list-row" data-act="history"><span class="list-main">Past shifts</span>
+          <span class="list-meta">${S.history.length || ''}</span>${svg('chev', 'chev')}</button>
+        <button class="list-row" data-act="settings"><span class="list-main">Settings</span>${svg('chev', 'chev')}</button>
+      </div>
+      <p class="muted">Each shift starts clean. Every tick is timestamped and saved on this phone as you go.</p>
+    </section>`;
 }
 
 /* ───────────────────────────── actions ───────────────────────────── */
@@ -922,12 +914,6 @@ function openSettings() {
 
       </div>
 
-      ${S.shift ? `<div class="group-header" style="padding-top:22px"><span class="gh-title">This shift</span></div>
-        <button class="btn" data-act="copy-report">${svg('copy')} Copy report as text</button>
-        <button class="btn" data-act="cal-export">${svg('cal')} Add timed checks to Calendar</button>
-        <button class="btn" data-act="print">${svg('print')} Print / Save as PDF</button>
-        <button class="btn destructive" data-act="shift-end">${svg('stop')} End shift and save to history</button>` : ''}
-
       <div class="group-header" style="padding-top:22px"><span class="gh-title">Reminders</span></div>
       <div class="card">
         <div class="toggle">
@@ -993,35 +979,6 @@ function addRooms() {
 }
 
 /* ───────────────────────── sheets: report ───────────────────────── */
-
-function openReport() {
-  const sh = S.shift;
-  if (!sh) { openHistory(); return; }
-  const p = overallProgress(sh);
-  // Sections with something left, each one tap away from its checklist.
-  const outstanding = TEMPLATE.map((sec) => {
-    const q = sectionProgress(sec, sh);
-    return q.total - q.done > 0 ? `<button class="open-row" data-act="report-jump" data-sec="${esc(sec.id)}">
-        <span>${esc(sec.title)}</span><span class="open-n">${q.total - q.done} left</span>${svg('chev', 'chev')}</button>` : '';
-  }).join('');
-
-  sheet(`
-    <div class="sheet-nav">
-      <button class="txt-btn" data-act="sheet-close">Done</button>
-      <h2>Shift report</h2>
-      <span class="txt-btn"></span>
-    </div>
-    <div class="sheet-body">
-      <p>${hhmm(sh.start)} – now · <b>${p.done} of ${p.total}</b> complete.${outstanding ? '' : ' Nothing outstanding.'}</p>
-      ${outstanding ? `<div class="open-list"><div class="caps">Still open</div>${outstanding}</div>` : ''}
-      <div class="report">${esc(reportText(sh))}</div>
-      <button class="btn" data-act="copy-report">${svg('copy')} Copy as text</button>
-      <button class="btn" data-act="print">${svg('print')} Print / Save as PDF</button>
-      <button class="btn destructive" data-act="shift-end">${svg('stop')} End shift and save to history</button>
-      <div class="group-footer">Ending the shift clears the live checklist and files this report
-        under History. Nothing is sent anywhere.</div>
-    </div>`);
-}
 
 /* ───────────────────────── sheets: history ───────────────────────── */
 
@@ -1230,14 +1187,13 @@ function sheet(html) {
   s.hidden = false;
   $('#sheet').scrollTop = 0;
 }
-/* After switching page, bring the top of the new page into view if it is
- * hidden under the header — but don't jump when it is already on screen. */
-function toContent() {
-  const app = $('#app');
+/* Scroll an opened checklist section's title to just under the header. */
+function showSection(id) {
+  const el = document.querySelector(`.group[data-sec="${CSS.escape(id)}"]`);
   const head = document.querySelector('header.top');
-  const offset = head ? head.getBoundingClientRect().height : 0;
-  const top = app.getBoundingClientRect().top;
-  if (top < offset) window.scrollTo(0, Math.max(0, window.scrollY + top - offset));
+  if (!el) return;
+  const offset = (head ? head.getBoundingClientRect().height : 0) + 8;
+  window.scrollTo(0, Math.max(0, window.scrollY + el.getBoundingClientRect().top - offset));
 }
 
 function closeSheet() {
@@ -1259,26 +1215,17 @@ document.addEventListener('click', async (ev) => {
   if (!el) return;
   const act = el.dataset.act;
   const path = el.dataset.path;
-  if (viewAction(act, el)) return;   // Timeline, Rooms, Everything else and Notes (views.js)
+  if (viewAction(act, el)) return;   // the five tabs (views.js)
 
   switch (act) {
     case 'check': toggleCheck(path); break;
 
-    case 'report-jump': {   // from the report straight to that section's checklist
+    case 'report-jump': {   // from what's still open straight to that section
       S.tab = 'everything';
       focusSection = el.dataset.sec;
-      S.shift.open[focusSection] = true;
       save();
       closeSheet();
-      toContent();
-      break;
-    }
-
-    case 'toggle-sec': {
-      const id = el.dataset.sec;
-      S.shift.open[id] = S.shift.open[id] === false;
-      save();
-      render();
+      showSection(focusSection);
       break;
     }
 
@@ -1294,7 +1241,6 @@ document.addEventListener('click', async (ev) => {
       const secId = path.split('.')[0];
       S.tab = 'everything';
       focusSection = secId;
-      S.shift.open[secId] = true;
       save();
       render();
       const row = document.querySelector(`.row[data-path="${CSS.escape(path)}"]`);
@@ -1379,7 +1325,6 @@ document.addEventListener('click', async (ev) => {
       break;
 
     case 'settings': openSettings(); break;
-    case 'report': openReport(); break;
     case 'top':
       closeSheet();
       window.scrollTo({ top: 0, behavior: 'smooth' });

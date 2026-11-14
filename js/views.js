@@ -1,22 +1,24 @@
-/* The four shift screens: Timeline, Rooms, Everything else and Notes.
+/* The five shift screens, one per tab: Timeline, Rooms, Checklist, Notes and
+ * Shift.
  *
  * They read and write the same shift data as the checklist in app.js. Timed
  * tasks show on the Timeline, tasks grouped by patient room on Rooms, the full
- * checklist on Everything else, and free notes on Notes. Notes are not part of
- * the checklist or the report. */
+ * checklist on Checklist, free notes on Notes, and the report, past shifts and
+ * settings on Shift. Notes are not part of the checklist or the report. */
 'use strict';
 
 const VIEWS = [
   { id: 'timeline', label: 'Timeline', icon: 'clock' },
   { id: 'rooms', label: 'Rooms', icon: 'grid' },
-  { id: 'everything', label: 'Everything else', icon: 'list' },
+  { id: 'everything', label: 'Checklist', icon: 'list' },
   { id: 'notes', label: 'Notes', icon: 'note' },
+  { id: 'shift', label: 'Shift', icon: 'moon' },
 ];
 
 const NOTE_COLORS = ['var(--soft)', 'var(--bg)'];   // shaded and outlined, alternating
 
 let composer = null;        // { room, timed, text, time } while the add-task form is open
-let focusSection = null;    // section id open inside Everything else
+let focusSection = null;    // the one checklist section that is open
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const naturalSort = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
@@ -28,6 +30,7 @@ function currentView() {
 
 function renderTabs() {
   const el = $('#tabs');
+  document.body.classList.toggle('has-tabs', !!S.shift);
   if (!S.shift) { el.innerHTML = ''; return; }
   const cur = currentView();
   el.innerHTML = VIEWS.map((v) => `<button data-act="view" data-view="${v.id}"
@@ -38,7 +41,6 @@ function renderShift(sh) {
   ensureShiftFields(sh);
   const view = currentView();
   const prog = overallProgress(sh);
-  const title = VIEWS.find((v) => v.id === view).label;
   const left = prog.total - prog.done;
 
   // Next timed item and anything past its time, from the same list the Timeline shows.
@@ -51,27 +53,22 @@ function renderShift(sh) {
     ? `Next: ${nextName} at ${hhmm(next.at)}.${late ? ` ${late} past its time.` : ''}`
     : (late ? `${late} timed ${late === 1 ? 'check is' : 'checks are'} past its time.` : 'No timed checks left tonight.');
 
-  $('#pagename').textContent = title;
-  $('#hdr').innerHTML = `<div class="wrap">
-    <div class="caps">${dayStamp(sh.start)} · on since ${hhmm(sh.start)} · ${elapsed(sh.start)}</div>
-    <div class="big">${left}<small>left tonight</small></div>
-    <p class="lede">${esc(status)}</p>
-    <div class="stats">
-      <div class="stat"><span class="k">Next due</span><span class="v">${next ? hhmm(next.at) : '—'}</span>
-        <span class="s">${next ? esc(nextName) : 'Nothing timed is left'}</span></div>
-      <div class="stat"><span class="k">Past time</span><span class="v">${late}</span>
-        <span class="s">${late ? 'Timed checks not yet ticked' : 'Nothing is past its time'}</span></div>
-      <div class="stat"><span class="k">Done</span><span class="v">${prog.done}</span>
-        <span class="s">of ${prog.total} tasks tonight</span></div>
-    </div>
-    <div class="track"><div class="fill" style="width:${prog.total ? (prog.done / prog.total) * 100 : 0}%"></div></div>
-  </div>`;
+  // One line in the header carries the shift's state: how much is left and
+  // what is next. The thin bar under it is overall progress.
+  $('#status').innerHTML = `<b>${left}</b> left${next
+      ? ` · next <b>${hhmm(next.at)}</b> <span class="status-what">${esc(nextName)}</span>` : ''}${
+      late ? ` · <b class="late">${late} late</b>` : ''}`;
+  $('#status').title = status;
+  $('#meter').style.width = `${prog.total ? (prog.done / prog.total) * 100 : 0}%`;
+  $('#hdr').innerHTML = '';
+  $('#hdr').hidden = true;
 
   const body = {
     timeline: timelineHTML,
     rooms: roomsHTML,
     everything: everythingHTML,
     notes: notesHTML,
+    shift: shiftHTML,
   }[view];
   $('#app').innerHTML = body(sh);
   renderTabs();
@@ -294,7 +291,7 @@ function taskRowHTML(sh, t) {
     return `<div class="room-task ${done ? 'done' : ''}">
       <button class="check" role="checkbox" aria-checked="${done}" data-act="check" data-path="${esc(t.path)}"
         aria-label="${esc(t.node.label)}">${svg('check')}</button>
-      <span class="room-task-name">${esc(t.node.label)}</span>
+      <span class="room-task-name" data-act="check" data-path="${esc(t.path)}">${esc(t.node.label)}</span>
       ${done ? `<span class="stamp">${hhmm(sh.checks[t.path])}</span>` : at}
     </div>`;
   }
@@ -302,7 +299,7 @@ function taskRowHTML(sh, t) {
   return `<div class="room-task ${c.done ? 'done' : ''}">
     <button class="check" role="checkbox" aria-checked="${!!c.done}" data-act="cust-toggle" data-uid="${esc(c.uid)}"
       aria-label="${esc(c.label)}">${svg('check')}</button>
-    <span class="room-task-name">${esc(c.label)}</span>
+    <span class="room-task-name" data-act="cust-toggle" data-uid="${esc(c.uid)}">${esc(c.label)}</span>
     ${c.done ? `<span class="stamp">${hhmm(c.done)}</span>` : c.time ? `<span class="room-time">${esc(c.time)}</span>` : '<span class="room-time">No time</span>'}
     <button class="entry-del" data-act="cust-del" data-uid="${esc(c.uid)}" aria-label="Remove ${esc(c.label)}">${svg('trash')}</button>
   </div>`;
@@ -333,7 +330,7 @@ function roomCardHTML(sh, room, tasks) {
   const open = sh.open['room:' + room] === undefined ? !vacatedAt : sh.open['room:' + room] !== false;
   const { done, total } = roomCounts(sh, tasks);
   const occBtn = occupied && !vacatedAt
-    ? `<button class="add-task quiet" data-act="occ-vacate" data-room="${esc(room)}">Vacated</button>` : '';
+    ? `<button class="add-task quiet" data-act="occ-vacate" data-room="${esc(room)}">Mark vacated</button>` : '';
   const body = open ? `<div class="room-body">
       ${tasks.map((t) => taskRowHTML(sh, t)).join('') || '<div class="room-empty">No tasks yet for this room.</div>'}
       ${composer && composer.room === room
@@ -460,23 +457,48 @@ function addCustom(room) {
 /* ───────────────────────────── everything else ───────────────────────────── */
 
 function everythingHTML(sh) {
-  const sec = focusSection && TEMPLATE.find((s) => s.id === focusSection);
-  if (sec) {
-    return `<div class="sec-back"><button data-act="sec-back">${svg('chev', 'chev back')} Everything else</button></div>
-      ${groupHTML(sec, sh)}`;
-  }
-  return `<div class="sec-list">${TEMPLATE.map((s) => {
-    const p = sectionProgress(s, sh);
-    const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
-    return `<button class="sec-row" data-act="sec-open" data-sec="${s.id}">
-      <span class="sec-main">
-        <span class="sec-title">${esc(s.title)}</span>
-        <span class="sec-bar"><span style="width:${pct}%"></span></span>
-      </span>
-      <span class="sec-count">${p.total ? `${p.done} of ${p.total}` : ''}</span>
-      ${svg('chev', 'chev')}
-    </button>`;
-  }).join('')}</div>`;
+  return `<div class="sections">${TEMPLATE.map((sec) => groupHTML(sec, sh)).join('')}</div>`;
+}
+
+/* ───────────────────────────── shift ─────────────────────────────
+ * Everything about the shift as a whole: what's left, the report, past shifts
+ * and settings. */
+
+function shiftHTML(sh) {
+  const p = overallProgress(sh);
+  const open = TEMPLATE.map((sec) => {
+    const q = sectionProgress(sec, sh);
+    return q.total - q.done > 0 ? `<button class="list-row" data-act="report-jump" data-sec="${esc(sec.id)}">
+        <span class="list-main">${esc(sec.title)}</span><span class="list-meta">${q.total - q.done} left</span>${svg('chev', 'chev')}</button>` : '';
+  }).join('');
+  return `<section class="block">
+      <h2 class="block-title">Tonight</h2>
+      <p class="block-lede">${dayStamp(sh.start)} · on since ${hhmm(sh.start)} · ${elapsed(sh.start)}.
+        <b>${p.done} of ${p.total}</b> done.</p>
+      ${open ? `<div class="list">${open}</div>` : '<p class="muted">Nothing outstanding.</p>'}
+    </section>
+    <section class="block">
+      <h2 class="block-title">Report</h2>
+      <div class="actions">
+        <button class="btn" data-act="copy-report">${svg('copy')} Copy</button>
+        <button class="btn" data-act="print">${svg('print')} Print or PDF</button>
+        <button class="btn" data-act="cal-export">${svg('cal')} Calendar</button>
+      </div>
+      <details class="preview"><summary>Preview the report</summary>
+        <div class="report">${esc(reportText(sh))}</div></details>
+    </section>
+    <section class="block">
+      <div class="list">
+        <button class="list-row" data-act="history"><span class="list-main">Past shifts</span>
+          <span class="list-meta">${S.history.length || ''}</span>${svg('chev', 'chev')}</button>
+        <button class="list-row" data-act="settings"><span class="list-main">Settings</span>${svg('chev', 'chev')}</button>
+      </div>
+    </section>
+    <section class="block">
+      <button class="btn danger" data-act="shift-end">${svg('stop')} End shift and save</button>
+      <p class="muted">Everything is saved on this phone as you go. Ending the shift files this report
+        under Past shifts and starts the next one clean.</p>
+    </section>`;
 }
 
 /* ───────────────────────────── notes ───────────────────────────── */
@@ -523,10 +545,9 @@ function viewAction(act, el) {
   switch (act) {
     case 'view':
       S.tab = el.dataset.view;
-      focusSection = null;
       save();
       render();
-      toContent();
+      window.scrollTo(0, 0);
       return true;
     case 'tl-toggle':
       timelineToggle(el);
@@ -611,18 +632,17 @@ function viewAction(act, el) {
       render();
       toast(`${el.dataset.room} occupied`);
       return true;
-    case 'sec-open':
-      focusSection = el.dataset.sec;
-      sh.open[focusSection] = true;
-      save();
+    case 'sec-open':      // open one section, close the rest, and bring it into view
+    case 'toggle-sec': {
+      const id = el.dataset.sec;
+      focusSection = act === 'toggle-sec' && focusSection === id ? null : id;
       render();
-      toContent();
+      if (focusSection) showSection(focusSection);
       return true;
-    case 'sec-back':
-      focusSection = null;
-      save();
-      render();
-      toContent();
+    }
+    case 'quick-room':    // one tap adds an occupied room to a checklist list
+      addEntries(el.dataset.path, [el.dataset.room]);
+      toast(`${el.dataset.room} added`);
       return true;
     case 'note-new': {
       const note = { uid: uid(), text: '', color: NOTE_COLORS[sh.notes.length % NOTE_COLORS.length], at: new Date().toISOString() };

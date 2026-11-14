@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="description" content="Shift checklist for charge nurses. Runs offline on your phone; nothing leaves the device.">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 
 <!-- Add to Home Screen: full-screen, no Safari chrome -->
 <meta name="mobile-web-app-capable" content="yes">
@@ -25,23 +25,17 @@
 
 <header class="top">
   <div class="wrap topbar">
-    <a class="mark" href="./">Charge.<span id="pagename"></span></a>
-    <nav id="tabs" class="pagelinks" aria-label="Pages"></nav>
-    <nav class="tools" aria-label="Tools">
-      <button type="button" data-act="history">History</button>
-      <button type="button" data-act="report">Report</button>
-      <button type="button" data-act="settings">Settings</button>
-    </nav>
+    <a class="mark" href="./">Charge.</a>
+    <div class="status" id="status" aria-live="polite"></div>
   </div>
+  <div class="meter" aria-hidden="true"><div class="meter-fill" id="meter"></div></div>
 </header>
 
 <section class="hero" id="hdr" aria-label="Summary"></section>
 
 <main class="wrap" id="app"></main>
 
-<footer class="foot">
-  <div class="wrap">Saved on this phone. Reminders stay off unless you turn them on in Settings.</div>
-</footer>
+<nav class="tabbar" id="tabs" aria-label="Pages"></nav>
 
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"></div></div>
 
