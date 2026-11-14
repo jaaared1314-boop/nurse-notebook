@@ -912,8 +912,6 @@ function openSettings() {
         : `<div class="group-footer">No rooms yet. Type a range like <b>3401-3420</b> or a
              comma-separated list and tap Add.</div>`}
 
-      </div>
-
       <div class="group-header" style="padding-top:22px"><span class="gh-title">Reminders</span></div>
       <div class="card">
         <div class="toggle">

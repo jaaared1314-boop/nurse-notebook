@@ -419,6 +419,92 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-width: 
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ───────── liquid glass ─────────
+   The chrome floats over the work: header, tab bar, sheets and toast are
+   frosted panes the checklist scrolls under. Content itself stays flat and
+   square; only the floating layer is glass, and only it is rounded. */
+
+:root {
+  --glass: rgba(255, 255, 255, .74);
+  --glass-strong: rgba(255, 255, 255, .93);
+  --glass-edge: rgba(255, 255, 255, .85);     /* the lit top edge */
+  --glass-rim: rgba(0, 0, 0, .09);            /* the outline */
+  --glass-lens: rgba(0, 0, 0, .07);           /* the active tab's lens */
+  --glass-shadow: 0 10px 34px rgba(0, 0, 0, .14), 0 2px 6px rgba(0, 0, 0, .06);
+  --glass-blur: blur(30px) saturate(190%);
+  --glass-ink-toast: rgba(20, 20, 20, .72);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --glass: rgba(28, 28, 30, .72);
+    --glass-strong: rgba(28, 28, 30, .93);
+    --glass-edge: rgba(255, 255, 255, .16);
+    --glass-rim: rgba(255, 255, 255, .10);
+    --glass-lens: rgba(255, 255, 255, .12);
+    --glass-shadow: 0 10px 34px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .35);
+    --glass-ink-toast: rgba(242, 242, 242, .78);
+  }
+}
+:root[data-theme="dark"] {
+  --glass: rgba(28, 28, 30, .72);
+  --glass-strong: rgba(28, 28, 30, .93);
+  --glass-edge: rgba(255, 255, 255, .16);
+  --glass-rim: rgba(255, 255, 255, .10);
+  --glass-lens: rgba(255, 255, 255, .12);
+  --glass-shadow: 0 10px 34px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .35);
+  --glass-ink-toast: rgba(242, 242, 242, .78);
+}
+
+/* header: a frosted strip the page slides under */
+header.top {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-rim);
+}
+
+/* tab bar: a floating capsule with a lens under the current tab */
+.tabbar {
+  left: 12px; right: 12px; bottom: calc(8px + var(--safe-b));
+  max-width: 520px; margin: 0 auto; padding: 5px;
+  border-radius: 32px; border: 1px solid var(--glass-rim); border-top-color: var(--glass-edge);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-edge);
+}
+.tabbar button { min-height: 52px; border-radius: 26px; transition: background-color .25s ease-out, color .25s ease-out; }
+.tabbar button[aria-current] { background: var(--glass-lens); }
+body.has-tabs { padding-bottom: calc(var(--tabbar) + 48px + var(--safe-b)); }
+
+/* sheets: a thicker pane with rounded top corners over a softly blurred page */
+.scrim { -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); background: rgba(0, 0, 0, .28); }
+.sheet {
+  border-top: 0; border-radius: 24px 24px 0 0;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-edge);
+}
+.sheet-nav { background: transparent; border-bottom-color: var(--glass-rim); }
+.grabber { display: block; width: 38px; height: 5px; border-radius: 3px; margin: 8px auto 0; background: var(--ink-3); opacity: .5; }
+
+/* toast: a small dark glass pill above the tab bar */
+.toast {
+  border-radius: 22px; background: var(--glass-ink-toast); color: var(--on-ink);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  bottom: calc(var(--tabbar) + 30px + var(--safe-b));
+}
+
+/* phones without blur, or set to Reduce Transparency: solid panes, same shapes */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  header.top, .tabbar, .sheet { background: var(--bg); }
+  .toast { background: var(--ink); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  header.top, .tabbar, .sheet { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .toast { background: var(--ink); }
+  .scrim { background: var(--scrim); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
 /* ───────── motion ───────── */
 
 @media (prefers-reduced-motion: reduce) {
