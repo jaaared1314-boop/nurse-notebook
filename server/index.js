@@ -25,7 +25,14 @@ const MAX_BODY = 64 * 1024;
 
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
-let store = {};   // sha256(deviceToken) -> { subscription, items: [...] }
+let store = {};   // sha256(deviceToken) -> { subscription, items: [...], lastSentAt, lastError }
+let pushSender = (...args) => webpush.sendNotification(...args);   // swapped out by the tests
+
+/* What the push service said when it refused, short enough to show on a phone. */
+function failure(e) {
+  const detail = String(e.body || e.message || 'unknown error').slice(0, 300);
+  return { at: new Date().toISOString(), status: e.statusCode || 0, detail };
+}
 
 function load() {
   try {
@@ -95,7 +102,8 @@ function cleanItems(items) {
 
 async function handle(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204);
-  if (req.url === '/api/health') return send(res, 200, { ok: true });
+  // The public key is not secret; the app compares it with its own to catch a mismatched pair.
+  if (req.url === '/api/health') return send(res, 200, { ok: true, publicKey: process.env.VAPID_PUBLIC || null });
 
   const token = req.headers['x-device-token'];
   if (typeof token !== 'string' || token.length < 20 || token.length > 100) {
@@ -138,11 +146,44 @@ async function handle(req, res) {
     return send(res, 200, { ok: true, count: items.length });
   }
 
+  // What the server holds for this phone, and how the last push went.
+  if (req.url === '/api/status' && req.method === 'POST') {
+    const rec = store[key];
+    if (!rec) return send(res, 200, { subscribed: false });
+    const open = rec.items.filter((i) => !i.dueSent).map((i) => i.dueAt).sort((a, b) => a - b);
+    return send(res, 200, {
+      subscribed: true,
+      count: rec.items.length,
+      next: open.length ? new Date(open[0]).toISOString() : null,
+      lastSentAt: rec.lastSentAt || null,
+      lastError: rec.lastError || null,
+    });
+  }
+
+  // Sends one alert to this phone now, and says what the push service answered.
+  if (req.url === '/api/test' && req.method === 'POST') {
+    const rec = store[key];
+    if (!rec) return send(res, 404, { error: 'not subscribed' });
+    const payload = { title: 'Test alert', body: 'Reminders reach this phone.', tag: 'test' };
+    try {
+      await pushSender(rec.subscription, JSON.stringify(payload), { TTL: 300, urgency: 'high' });
+      rec.lastSentAt = new Date().toISOString();
+      rec.lastError = null;
+      save();
+      return send(res, 200, { ok: true });
+    } catch (e) {
+      rec.lastError = failure(e);
+      save();
+      console.error('test push failed', rec.lastError.status, rec.lastError.detail);
+      return send(res, 200, { ok: false, status: rec.lastError.status, detail: rec.lastError.detail });
+    }
+  }
+
   return send(res, 404, { error: 'not found' });
 }
 
 /* Sends whatever is due. `sender` is injectable so the tests can watch what would go out. */
-async function tick(now = Date.now(), sender = webpush.sendNotification) {
+async function tick(now = Date.now(), sender = pushSender) {
   let changed = false;
   for (const key of Object.keys(store)) {
     const rec = store[key];
@@ -155,11 +196,16 @@ async function tick(now = Date.now(), sender = webpush.sendNotification) {
         ? { title: `${i.label} due in ${PRE_MINUTES} min`, body: i.room, tag: i.id + ':pre' }
         : { title: `${i.label} due now`, body: i.room, tag: i.id + ':due' };
       try {
-        await sender(rec.subscription, JSON.stringify(payload), { TTL: 900 });
+        await sender(rec.subscription, JSON.stringify(payload), { TTL: 900, urgency: 'high' });
         if (pre) i.preSent = true;
         else i.dueSent = true;
+        rec.lastSentAt = new Date(now).toISOString();
+        rec.lastError = null;
         changed = true;
       } catch (e) {
+        rec.lastError = failure(e);
+        changed = true;
+        console.error('push failed', rec.lastError.status, rec.lastError.detail);
         // 404 or 410 means the phone unsubscribed or the app was removed. Forget it.
         if (e.statusCode === 404 || e.statusCode === 410) {
           delete store[key];
@@ -201,6 +247,7 @@ module.exports = {
   tick,
   store: () => store,
   setStore: (s) => { store = s; },
+  setSender: (fn) => { pushSender = fn; },
   load,
   sha,
 };

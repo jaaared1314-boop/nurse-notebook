@@ -90,6 +90,19 @@ icon and add it again.
 2. Under Reminders, turn on **Timed checks**.
 3. Tap Allow when iOS asks.
 
+## When alerts don't arrive
+
+Open **Settings** in the app (menu button, top right). Under Reminders it checks each
+step a reminder depends on, in order: opened from the Home Screen, notifications
+allowed, reminders on, the server knows this phone, the app's key matches the server's,
+how many reminders the server holds for tonight, and what Apple said about the last
+alert. **Send a test alert** asks the server to send one right away and shows Apple's
+answer if it refuses.
+
+The server also logs every refused alert with Apple's reason: `fly logs`.
+
+After changing anything in this folder, deploy it again from here: `fly deploy`.
+
 ## Testing
 
     npm test

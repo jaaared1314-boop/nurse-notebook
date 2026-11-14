@@ -133,6 +133,14 @@ function timedChecks(sh, opts = {}) {
         out.push({ key: path + '/' + it.uid, dueAt: nextOccurrence(it.time, sh), room: room || '', label: node.label });
       });
     }
+    // A checklist item with a time: one you set with its clock, or a fixed one like the 0600 Q2.
+    if (itemTimeable(node) && !sh.checks[path]) {
+      const t = (sh.times || {})[path] || node.at;
+      if (t) {
+        const label = path.startsWith('restraints.') ? 'Restraints: ' + node.label : node.label;
+        out.push({ key: 'check.' + path, dueAt: nextOccurrence(t, sh), room: room || '', label });
+      }
+    }
     (node.children || []).forEach((c) => walk(c, path + '.' + c.id, room));
   };
   TEMPLATE.forEach((sec) => (sec.items || []).forEach((it) => walk(it, sec.id + '.' + it.id, '')));
@@ -886,6 +894,7 @@ function confirmRooms() {
 /* ───────────────────────── sheets: settings ───────────────────────── */
 
 function openSettings() {
+  setTimeout(fillPushDiag, 0);
   sheet(`
     <div class="sheet-nav">
       <button class="txt-btn" data-act="sheet-close">Done</button>
@@ -916,12 +925,16 @@ function openSettings() {
       <div class="card">
         <div class="toggle">
           <div class="toggle-text">Timed checks
-            <small>${pushAvailable()
-              ? 'A notification 15 minutes before each timed check and again when it is due, even with the phone locked. Needs the app on your Home Screen. Room numbers are sent to your reminder server.'
-              : 'Not set up yet. Host the reminder server and add its address to js/config.js (see the README).'}</small></div>
+            <small>${!pushConfig()
+              ? 'Not set up yet. Host the reminder server and add its address to js/config.js (see the README).'
+              : pushAvailable()
+                ? 'A notification 15 minutes before each timed check and again when it is due, even with the phone locked. Room numbers and check names are sent to your reminder server.'
+                : 'Open Charge from its Home Screen icon to use reminders. iPhone only allows them there, not in Safari.'}</small></div>
           <button class="switch" role="switch" aria-checked="${pushOn()}" data-act="push-toggle"
             ${pushAvailable() ? '' : 'disabled'} aria-label="Timed check reminders"></button>
         </div>
+        ${pushConfig() ? `<div class="push-diag" id="push-diag"><p class="muted">Checking reminders…</p></div>
+          <button class="btn" data-act="push-test" ${pushAvailable() && pushOn() ? '' : 'disabled'}>${svg('bell')} Send a test alert</button>` : ''}
       </div>
 
       <div class="group-header" style="padding-top:22px"><span class="gh-title">Data</span></div>
@@ -930,6 +943,36 @@ function openSettings() {
         site, or deleting the app from your home screen, erases it permanently.</div>
       <button class="btn destructive" data-act="wipe">${svg('trash')} Erase all shifts and settings</button>
     </div>`);
+}
+
+/* The reminder status under Settings: each step a reminder needs, in order. */
+async function fillPushDiag() {
+  const box = $('#push-diag');
+  if (!box) return;
+  const d = await pushDiagnostics();
+  const t = (iso) => (iso ? hhmm(iso) : '');
+  const row = (good, text) => `<li class="${good ? 'ok' : 'bad'}">${svg(good ? 'check' : 'x')}<span>${text}</span></li>`;
+  const s = d.server || {};
+  const rows = [
+    row(d.homeScreen, d.homeScreen ? 'Opened from the Home Screen' : 'Not opened from the Home Screen icon'),
+    row(d.permission === 'granted', d.permission === 'granted' ? 'Notifications allowed'
+      : d.permission === 'denied' ? 'Notifications blocked. Turn them on in iPhone Settings › Notifications › Charge'
+        : 'Notifications not allowed yet. Turn on Timed checks above'),
+    row(d.on && d.hasSub, d.on && d.hasSub ? 'Reminders on for this phone' : 'Reminders are off on this phone'),
+    s.error === 'unreachable' ? row(false, 'Can’t reach the reminder server')
+      : s.error === 'old' ? row(false, 'The reminder server needs updating (fly deploy)')
+        : row(!!s.subscribed, s.subscribed ? 'The server knows this phone' : 'The server doesn’t know this phone. Turn Timed checks off and on'),
+  ];
+  if (d.keyMatch === false) rows.push(row(false, 'The app and server keys don’t match. Apple will refuse every alert'));
+  if (s.subscribed) {
+    rows.push(row(s.count > 0, s.count > 0
+      ? `${s.count} reminder${s.count === 1 ? '' : 's'} on the server${s.next ? `, next ${t(s.next)}` : ''}`
+      : 'No reminders on the server yet. Give a check a time, or tick something to resend'));
+    if (s.lastError) rows.push(row(false, `Last alert failed at ${t(s.lastError.at)}: ${esc(s.lastError.status)} ${esc(s.lastError.detail)}`));
+    else if (s.lastSentAt) rows.push(row(true, `Last alert sent at ${t(s.lastSentAt)}`));
+  }
+  if (d.lastSync && !d.lastSync.ok) rows.push(row(false, `Last send from this phone failed at ${t(d.lastSync.at)}`));
+  box.innerHTML = `<ul class="diag">${rows.join('')}</ul>`;
 }
 
 /* Turns what you'd actually type into a room list:
@@ -1420,6 +1463,18 @@ document.addEventListener('click', async (ev) => {
     case 'cal-export':
       if (S.shift) exportCalendar(S.shift);
       break;
+    case 'push-test': {
+      el.disabled = true;
+      try {
+        const r = await sendTestAlert();
+        toast(r && r.ok ? 'Test alert sent. It should arrive in a few seconds' : `Apple refused it: ${(r && r.status) || ''}`);
+      } catch (e) {
+        toast(/404/.test(e.message) ? 'The reminder server needs updating' : 'Could not reach the reminder server');
+      }
+      el.disabled = false;
+      fillPushDiag();
+      break;
+    }
     case 'push-toggle': {
       el.disabled = true;
       try {
@@ -1437,6 +1492,9 @@ document.addEventListener('click', async (ev) => {
       }
       el.disabled = false;
       el.setAttribute('aria-checked', String(pushOn()));
+      const testBtn = document.querySelector('[data-act="push-test"]');
+      if (testBtn) testBtn.disabled = !pushOn();
+      fillPushDiag();
       break;
     }
     case 'wipe':
@@ -1521,6 +1579,7 @@ setInterval(() => { if (S.shift && $('#scrim').hidden) render(); }, 60000);
 load();
 applyTheme();
 render();
+refreshPush().then(() => { if (S.shift) pushSync(); });   // reminders on: make sure the server is current
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () =>

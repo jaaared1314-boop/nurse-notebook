@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 
 process.env.DATA_FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cnc-test-')), 'store.json');
-const { createServer, tick } = require('../index');
+const { createServer, tick, setSender } = require('../index');
 
 const TOKEN = 'device-token-for-tests-0001';
 const OTHER = 'device-token-for-tests-0002';
@@ -144,4 +144,59 @@ test('a temporary push failure is retried on the next tick', async () => {
   assert.equal(sent.length, 0);
   await tick(T - 9 * MIN, flaky);
   assert.equal(sent.length, 1);
+});
+
+/* ── seeing what happens: a test alert, a status report, and Apple's answer kept ── */
+
+const THIRD = 'device-token-for-tests-0003';
+
+test('a test alert goes to this phone right away', async () => {
+  const { sent, sender } = recorder();
+  setSender(sender);
+  await call('POST', '/api/subscribe', THIRD, { subscription: sub });
+  const r = await call('POST', '/api/test', THIRD);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.ok, true);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].payload.title, /test/i);
+});
+
+test('a test alert that the push service refuses reports why', async () => {
+  setSender(async () => { throw Object.assign(new Error('refused'), { statusCode: 403, body: '{"reason":"BadJwtToken"}' }); });
+  const r = await call('POST', '/api/test', THIRD);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.ok, false);
+  assert.equal(r.body.status, 403);
+  assert.match(r.body.detail, /BadJwtToken/);
+});
+
+test('a test alert needs a subscribed phone', async () => {
+  const r = await call('POST', '/api/test', 'device-token-never-subscribed-01');
+  assert.equal(r.status, 404);
+});
+
+test('status says what the server holds for this phone and the last push result', async () => {
+  const T = DUE + 600 * MIN;
+  await call('POST', '/api/schedule', THIRD, { items: [item('st-a', T, 'CCU 24'), item('st-b', T + 60 * MIN, 'CCU 24')] });
+  const failing = async () => { throw Object.assign(new Error('refused'), { statusCode: 403, body: 'BadJwtToken' }); };
+  await tick(T - 10 * MIN, failing);
+  const r = await call('POST', '/api/status', THIRD);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.subscribed, true);
+  assert.equal(r.body.count, 2);
+  assert.equal(r.body.next, new Date(T).toISOString());
+  assert.equal(r.body.lastError.status, 403);
+  assert.match(r.body.lastError.detail, /BadJwtToken/);
+});
+
+test('status for an unknown phone says it is not subscribed', async () => {
+  const r = await call('POST', '/api/status', 'device-token-never-subscribed-02');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.subscribed, false);
+});
+
+test('health shares the public key so the app can check it matches', async () => {
+  process.env.VAPID_PUBLIC = 'test-public-key';
+  const r = await call('GET', '/api/health');
+  assert.equal(r.body.publicKey, 'test-public-key');
 });

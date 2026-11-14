@@ -73,5 +73,60 @@ async function disablePush() {
  * checklist itself; the next change to the shift tries again. */
 async function syncReminders(items) {
   if (!pushAvailable() || !pushOn()) return;
-  try { await reminderApi('POST', '/api/schedule', { items }); } catch (_) { /* retried on the next change */ }
+  let note;
+  try {
+    const r = await reminderApi('POST', '/api/schedule', { items });
+    note = { at: new Date().toISOString(), ok: true, count: r ? r.count : items.length };
+  } catch (e) {
+    note = { at: new Date().toISOString(), ok: false, error: e.message };   // retried on the next change
+  }
+  try { localStorage.setItem(PUSH_SYNC_KEY, JSON.stringify(note)); } catch (_) { /* nothing to keep it in */ }
+}
+
+const PUSH_SYNC_KEY = 'cnc.push.lastSync';
+
+/* On every launch: if reminders are on, tell the server this phone's subscription
+ * again. It is harmless when nothing changed, and it repairs a server that lost it. */
+async function refreshPush() {
+  if (!pushAvailable() || !pushOn() || Notification.permission !== 'granted') return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) await reminderApi('POST', '/api/subscribe', { subscription: sub.toJSON() });
+  } catch (_) { /* shown in Settings under Reminders */ }
+}
+
+/* Each step a reminder depends on, checked now, for the Settings screen. */
+async function pushDiagnostics() {
+  const d = {
+    configured: !!pushConfig(),
+    homeScreen: !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)),
+    supported: 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window,
+    permission: 'Notification' in window ? Notification.permission : 'unsupported',
+    on: pushOn(),
+    hasSub: false,
+    server: null,
+    lastSync: null,
+  };
+  try { d.lastSync = JSON.parse(localStorage.getItem(PUSH_SYNC_KEY) || 'null'); } catch (_) { /* none */ }
+  if (d.supported) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      d.hasSub = !!(await reg.pushManager.getSubscription());
+    } catch (_) { /* leave false */ }
+  }
+  if (d.configured) {
+    try {
+      const h = await (await fetch(pushConfig().server.replace(/\/$/, '') + '/api/health')).json();
+      d.keyMatch = h.publicKey ? h.publicKey === pushConfig().vapidPublicKey : null;   // null: server too old to say
+    } catch (_) { d.keyMatch = null; }
+    try { d.server = await reminderApi('POST', '/api/status'); }
+    catch (e) { d.server = { error: /404/.test(e.message) ? 'old' : 'unreachable' }; }
+  }
+  return d;
+}
+
+/* Asks the server to send one alert to this phone now. */
+async function sendTestAlert() {
+  return reminderApi('POST', '/api/test');
 }
