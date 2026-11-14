@@ -1,7 +1,7 @@
 /* Offline shell. Bump CACHE whenever a file below changes so phones that
  * already installed the app pick up the new version on their next launch. */
 
-const CACHE = 'cnc-v30';
+const CACHE = 'cnc-v31';
 const ASSETS = [
   './',
   './index.html',

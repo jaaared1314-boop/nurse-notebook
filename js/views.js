@@ -19,6 +19,16 @@ const NOTE_COLORS = ['var(--soft)', 'var(--bg)'];   // shaded and outlined, alte
 
 let composer = null;        // { room, timed, text, time } while the add-task form is open
 let focusSection = null;    // the one checklist section that is open
+const tabScroll = {};       // where each tab was scrolled to, for this visit
+
+/* Replays an entrance animation on the page area. */
+function playEnter(cls) {
+  const app = $('#app');
+  app.classList.remove('enter-right', 'enter-left');
+  void app.offsetWidth;                    // restart it if it was already running
+  app.classList.add(cls);
+  app.addEventListener('animationend', () => app.classList.remove(cls), { once: true });
+}
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const naturalSort = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
@@ -33,6 +43,9 @@ function renderTabs() {
   document.body.classList.toggle('has-tabs', !!S.shift);
   if (!S.shift) { el.innerHTML = ''; return; }
   const cur = currentView();
+  // the sliding bar above the tabs reads these
+  el.style.setProperty('--tabs', VIEWS.length);
+  el.style.setProperty('--tab-i', VIEWS.findIndex((v) => v.id === cur));
   el.innerHTML = VIEWS.map((v) => `<button data-act="view" data-view="${v.id}"
       ${v.id === cur ? 'aria-current="page"' : ''}>${svg(v.icon)}<span>${v.label}</span></button>`).join('');
 }
@@ -521,12 +534,22 @@ function viewAction(act, el) {
   const sh = S.shift;
   if (!sh) return false;
   switch (act) {
-    case 'view':
-      S.tab = el.dataset.view;
+    case 'view': {
+      const from = currentView();
+      const to = el.dataset.view;
+      if (from === to) {                       // tapping the tab you're on: back to the top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return true;
+      }
+      tabScroll[from] = window.scrollY;        // each tab keeps its place
+      S.tab = to;
       save();
       render();
-      window.scrollTo(0, 0);
+      window.scrollTo(0, tabScroll[to] || 0);
+      const order = VIEWS.map((x) => x.id);
+      playEnter(order.indexOf(to) > order.indexOf(from) ? 'enter-right' : 'enter-left');
       return true;
+    }
     case 'tl-toggle':
       timelineToggle(el);
       return true;
@@ -615,7 +638,11 @@ function viewAction(act, el) {
       const id = el.dataset.sec;
       focusSection = act === 'toggle-sec' && focusSection === id ? null : id;
       render();
-      if (focusSection) showSection(focusSection);
+      if (focusSection) {
+        showSection(focusSection);
+        const body = document.querySelector(`.group[data-sec="${CSS.escape(focusSection)}"] .section-body`);
+        if (body) body.classList.add('opening');
+      }
       return true;
     }
     case 'quick-room':    // one tap adds an occupied room to a checklist list

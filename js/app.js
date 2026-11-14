@@ -1214,8 +1214,11 @@ async function copyReport(sh) {
 
 /* ───────────────────────────── sheet plumbing ───────────────────────────── */
 
+let sheetCloseTimer = null;
 function sheet(html) {
   const s = $('#scrim');
+  clearTimeout(sheetCloseTimer);          // a sheet opened mid-close stays open
+  s.classList.remove('closing');
   $('#sheet').innerHTML = `<div class="grabber"></div>${html}`;
   s.hidden = false;
   $('#sheet').scrollTop = 0;
@@ -1230,9 +1233,17 @@ function showSection(id) {
 }
 
 function closeSheet() {
-  $('#scrim').hidden = true;
-  $('#sheet').innerHTML = '';
+  const s = $('#scrim');
   render();
+  if (s.hidden) return;
+  // slide it away, then clear it
+  s.classList.add('closing');
+  clearTimeout(sheetCloseTimer);
+  sheetCloseTimer = setTimeout(() => {
+    s.hidden = true;
+    s.classList.remove('closing');
+    $('#sheet').innerHTML = '';
+  }, 200);
 }
 
 function applyTheme() {
@@ -1529,3 +1540,21 @@ if ('serviceWorker' in navigator) {
     window.location.reload();
   });
 }
+
+/* After a tick re-renders the page, find the box that was ticked and let it pop. */
+document.addEventListener('click', (ev) => {
+  const el = ev.target.closest('[data-act]');
+  if (!el) return;
+  if (!['check', 'sched-check', 'todo-check', 'cust-toggle', 'tl-toggle'].includes(el.dataset.act)) return;
+  const sel = ['act', 'path', 'uid', 'kind'].filter((k) => el.dataset[k] != null)
+    .map((k) => `[data-${k}="${CSS.escape(el.dataset[k])}"]`).join('');
+  requestAnimationFrame(() => {
+    const box = [...document.querySelectorAll(sel)].map((n) => (n.matches('.check, .tl-circle') ? n
+      : n.querySelector('.tl-circle, .check')
+        || (n.closest('.row-inner, .room-task, .entry-head') || n).querySelector('.check'))).find(Boolean);
+    if (!box) return;
+    box.classList.remove('pop');
+    void box.offsetWidth;
+    box.classList.add('pop');
+  });
+});
