@@ -1223,13 +1223,12 @@ function sheet(html) {
   s.hidden = false;
   $('#sheet').scrollTop = 0;
 }
-/* Scroll an opened checklist section's title to just under the header. */
+/* Scroll an opened checklist section's title to the top of the scrolling area. */
 function showSection(id) {
   const el = document.querySelector(`.group[data-sec="${CSS.escape(id)}"]`);
-  const head = document.querySelector('header.top');
   if (!el) return;
-  const offset = (head ? head.getBoundingClientRect().height : 0) + 8;
-  window.scrollTo(0, Math.max(0, window.scrollY + el.getBoundingClientRect().top - offset));
+  const sc = $('#scroller');
+  sc.scrollTop = Math.max(0, sc.scrollTop + el.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8);
 }
 
 function closeSheet() {
@@ -1372,7 +1371,7 @@ document.addEventListener('click', async (ev) => {
     case 'settings': openSettings(); break;
     case 'top':
       closeSheet();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      $('#scroller').scrollTo({ top: 0, behavior: 'smooth' });
       break;
     case 'collapse-all': {
       const ids = TEMPLATE.map((x) => x.id);

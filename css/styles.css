@@ -442,6 +442,32 @@ body.has-tabs { padding-bottom: calc(var(--tabbar) + 48px + var(--safe-b)); }
 }
 .menu-btn svg { width: 22px; height: 22px; }
 
+/* ───────── app frame ─────────
+   The header and tab bar are not pinned to the screen. iOS 26 shifts pinned
+   (fixed/sticky) elements up and down when the scroll direction changes
+   (WebKit bug 297779), which made the bars jump on every tab tap. Instead the
+   page is one screen-tall column: header, a scrolling middle, tab bar. The
+   page itself never scrolls, so there is nothing for iOS to shift. */
+
+html, body { height: 100%; }
+body {
+  display: flex; flex-direction: column;
+  height: 100vh; height: 100dvh; min-height: 0;
+  overflow: hidden; padding-bottom: 0;
+}
+body.has-tabs { padding-bottom: 0; }
+header.top { position: relative; top: auto; flex: none; }
+.scroller {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-bottom: 32px;
+}
+body:not(.has-tabs) .scroller { padding-bottom: calc(32px + var(--safe-b)); }
+.tabbar { position: relative; left: auto; right: auto; bottom: auto; flex: none; }
+.tabbar:empty { display: none; }
+
 /* ───────── motion ─────────
    Short and quiet: ease-out, 120–280 ms, transform and opacity only, so
    nothing reflows while it moves. Reduce Motion turns all of it off. */

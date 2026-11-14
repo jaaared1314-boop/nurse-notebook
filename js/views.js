@@ -537,15 +537,16 @@ function viewAction(act, el) {
     case 'view': {
       const from = currentView();
       const to = el.dataset.view;
+      const sc = $('#scroller');
       if (from === to) {                       // tapping the tab you're on: back to the top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        sc.scrollTo({ top: 0, behavior: 'smooth' });
         return true;
       }
-      tabScroll[from] = window.scrollY;        // each tab keeps its place
+      tabScroll[from] = sc.scrollTop;          // each tab keeps its place
       S.tab = to;
       save();
       render();
-      window.scrollTo(0, tabScroll[to] || 0);
+      sc.scrollTop = tabScroll[to] || 0;
       const order = VIEWS.map((x) => x.id);
       playEnter(order.indexOf(to) > order.indexOf(from) ? 'enter-right' : 'enter-left');
       return true;
