@@ -4,7 +4,7 @@
  * They read and write the same shift data as the checklist in app.js. Timed
  * tasks show on the Timeline, tasks grouped by patient room on Rooms, the full
  * checklist on Checklist, free notes on Notes, and the report, past shifts and
- * settings on Shift. Notes are not part of the checklist or the report. */
+ * settings in the menu at the top. Notes are not part of the checklist or the report. */
 'use strict';
 
 const VIEWS = [
@@ -461,8 +461,8 @@ function everythingHTML(sh) {
 }
 
 /* ───────────────────────────── shift ─────────────────────────────
- * Everything about the shift as a whole: what's left, the report, past shifts
- * and settings. */
+ * The end of the shift and what's still open tonight. The report, past shifts
+ * and settings live in the menu at the top. */
 
 function shiftHTML(sh) {
   const p = overallProgress(sh);
@@ -472,32 +472,15 @@ function shiftHTML(sh) {
         <span class="list-main">${esc(sec.title)}</span><span class="list-meta">${q.total - q.done} left</span>${svg('chev', 'chev')}</button>` : '';
   }).join('');
   return `<section class="block">
+      <h2 class="block-title">End of shift</h2>
+      <button class="btn danger big-btn" data-act="shift-end">${svg('stop')} End shift and save</button>
+      <p class="muted">Ending files tonight's report under Past shifts and starts the next shift clean. Everything is saved on this phone as you go.</p>
+    </section>
+    <section class="block">
       <h2 class="block-title">Tonight</h2>
       <p class="block-lede">${dayStamp(sh.start)} · on since ${hhmm(sh.start)} · ${elapsed(sh.start)}.
         <b>${p.done} of ${p.total}</b> done.</p>
       ${open ? `<div class="list">${open}</div>` : '<p class="muted">Nothing outstanding.</p>'}
-    </section>
-    <section class="block">
-      <h2 class="block-title">Report</h2>
-      <div class="actions">
-        <button class="btn" data-act="copy-report">${svg('copy')} Copy</button>
-        <button class="btn" data-act="print">${svg('print')} Print or PDF</button>
-        <button class="btn" data-act="cal-export">${svg('cal')} Calendar</button>
-      </div>
-      <details class="preview"><summary>Preview the report</summary>
-        <div class="report">${esc(reportText(sh))}</div></details>
-    </section>
-    <section class="block">
-      <div class="list">
-        <button class="list-row" data-act="history"><span class="list-main">Past shifts</span>
-          <span class="list-meta">${S.history.length || ''}</span>${svg('chev', 'chev')}</button>
-        <button class="list-row" data-act="settings"><span class="list-main">Settings</span>${svg('chev', 'chev')}</button>
-      </div>
-    </section>
-    <section class="block">
-      <button class="btn danger" data-act="shift-end">${svg('stop')} End shift and save</button>
-      <p class="muted">Everything is saved on this phone as you go. Ending the shift files this report
-        under Past shifts and starts the next one clean.</p>
     </section>`;
 }
 

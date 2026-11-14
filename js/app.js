@@ -976,6 +976,37 @@ function addRooms() {
   toast(added.length === 1 ? 'Room added' : `${added.length} rooms added`);
 }
 
+/* ───────────────────────── sheets: menu ─────────────────────────
+ * Report, past shifts and settings, kept out of the shift tabs. */
+function openMenu() {
+  const sh = S.shift;
+  sheet(`
+    <div class="sheet-nav">
+      <span class="txt-btn"></span>
+      <h2>Menu</h2>
+      <button class="txt-btn strong" data-act="sheet-close">Done</button>
+    </div>
+    <div class="sheet-body">
+      ${sh ? `<section class="block">
+        <h2 class="block-title">Report</h2>
+        <div class="actions">
+          <button class="btn" data-act="copy-report">${svg('copy')} Copy</button>
+          <button class="btn" data-act="print">${svg('print')} Print or PDF</button>
+          <button class="btn" data-act="cal-export">${svg('cal')} Calendar</button>
+        </div>
+        <details class="preview"><summary>Preview the report</summary>
+          <div class="report">${esc(reportText(sh))}</div></details>
+      </section>` : ''}
+      <section class="block">
+        <div class="list">
+          <button class="list-row" data-act="history"><span class="list-main">Past shifts</span>
+            <span class="list-meta">${S.history.length || ''}</span>${svg('chev', 'chev')}</button>
+          <button class="list-row" data-act="settings"><span class="list-main">Settings</span>${svg('chev', 'chev')}</button>
+        </div>
+      </section>
+    </div>`);
+}
+
 /* ───────────────────────── sheets: report ───────────────────────── */
 
 /* ───────────────────────── sheets: history ───────────────────────── */
@@ -1322,6 +1353,7 @@ document.addEventListener('click', async (ev) => {
       if (confirm('End the shift and move it to history? The live checklist will be cleared.')) endShift();
       break;
 
+    case 'menu': openMenu(); break;
     case 'settings': openSettings(); break;
     case 'top':
       closeSheet();
