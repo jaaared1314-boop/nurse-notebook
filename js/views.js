@@ -461,8 +461,8 @@ function everythingHTML(sh) {
 }
 
 /* ───────────────────────────── shift ─────────────────────────────
- * The end of the shift and what's still open tonight. The report, past shifts
- * and settings live in the menu at the top. */
+ * What's still open tonight. The report, past shifts, settings and ending
+ * the shift live in the menu at the top. */
 
 function shiftHTML(sh) {
   const p = overallProgress(sh);
@@ -472,11 +472,6 @@ function shiftHTML(sh) {
         <span class="list-main">${esc(sec.title)}</span><span class="list-meta">${q.total - q.done} left</span>${svg('chev', 'chev')}</button>` : '';
   }).join('');
   return `<section class="block">
-      <h2 class="block-title">End of shift</h2>
-      <button class="btn danger big-btn" data-act="shift-end">${svg('stop')} End shift and save</button>
-      <p class="muted">Ending files tonight's report under Past shifts and starts the next shift clean. Everything is saved on this phone as you go.</p>
-    </section>
-    <section class="block">
       <h2 class="block-title">Tonight</h2>
       <p class="block-lede">${dayStamp(sh.start)} · on since ${hhmm(sh.start)} · ${elapsed(sh.start)}.
         <b>${p.done} of ${p.total}</b> done.</p>

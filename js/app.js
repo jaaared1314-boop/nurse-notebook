@@ -1004,6 +1004,10 @@ function openMenu() {
           <button class="list-row" data-act="settings"><span class="list-main">Settings</span>${svg('chev', 'chev')}</button>
         </div>
       </section>
+      ${sh ? `<section class="block">
+        <button class="btn danger" data-act="shift-end">${svg('stop')} End shift and save</button>
+        <p class="muted">Ending files tonight's report under Past shifts and starts the next shift clean. Everything is saved on this phone as you go.</p>
+      </section>` : ''}
     </div>`);
 }
 
